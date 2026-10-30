@@ -6,19 +6,33 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { getAccessToken } from '@/utils/access';
 import { StripeProductMetadata } from '@/types/payment';
 import { AvailablePlan, PlanType } from '@/types/quota';
-import { decodeBase64, PUBLIC_DEFAULTS } from '@/services/publicDefaults';
 
 let stripePromise: Promise<StripeClient | null>;
 
+/** Decodes a base64 value, tolerating a missing or malformed one. */
+const decodeBase64 = (value?: string): string => {
+  if (!value) return '';
+  try {
+    return atob(value);
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * The publishable key is optional. A deployment that does not sell anything
+ * (a self-hosted one) has no key, and the client resolves to `null` instead
+ * of throwing: Stripe.js rejects an empty key outright.
+ */
 export const getStripe = () => {
   if (!stripePromise) {
     const publishableKey =
       process.env.NODE_ENV === 'production'
-        ? process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_BASE64'] ||
-          PUBLIC_DEFAULTS.stripePublishableKeyBase64
-        : process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_DEV_BASE64'] ||
-          PUBLIC_DEFAULTS.stripePublishableKeyDevBase64;
-    stripePromise = loadStripe(decodeBase64(publishableKey));
+        ? process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_BASE64']
+        : process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_DEV_BASE64'];
+    stripePromise = publishableKey
+      ? loadStripe(decodeBase64(publishableKey))
+      : Promise.resolve(null);
   }
   return stripePromise;
 };

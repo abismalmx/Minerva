@@ -1,27 +1,21 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import type { Book, BookConfig, PageboundBookLink } from '@/types/book';
-import { PUBLIC_DEFAULTS } from '@/services/publicDefaults';
 
 // Pagebound has no public API. These are the endpoints and public client keys
 // its own web app uses (https://pagebound.co): Firebase email/password auth,
 // exchanged for a Pagebound API token, and a search-only Typesense key. The
 // API sends no CORS headers, so this only runs through the native HTTP client.
 //
-// Both keys are public client credentials, not secrets, so they ship with the
-// app by default. They stay configurable so a deployment can point at its own
-// keys: NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY and
-// NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY. Setting either one to an empty
-// string switches that half of the integration off.
+// Both keys are optional: a deployment that does not use Pagebound leaves
+// them empty and the integration stays switched off, instead of the module
+// failing to load.
 const API_URL = 'https://prod-pagebound-api.onrender.com/api/v1';
 const TYPESENSE_URL =
   'https://hztadco4ku1vqi6lp.a1.typesense.net/collections/books/documents/search';
 
-const firebaseApiKey = () =>
-  process.env['NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY'] ?? PUBLIC_DEFAULTS.pageboundFirebaseApiKey;
+const firebaseApiKey = () => process.env['NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY'] || '';
 
-const typesenseApiKey = () =>
-  process.env['NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY'] ??
-  PUBLIC_DEFAULTS.pageboundTypesenseApiKey;
+const typesenseApiKey = () => process.env['NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY'] || '';
 
 const signInUrl = (apiKey: string) =>
   `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
@@ -100,14 +94,16 @@ const exchangeIdToken = async (idToken: string): Promise<string> => {
   return data['token'];
 };
 
-/** Signs in with a Pagebound email and password; the password is not kept. */
-export const loginPagebound = async (email: string, password: string) => {
+/**
+ * Signs in with a Pagebound email and password; the password is not kept.
+ * Resolves to `null` when the integration is not configured.
+ */
+export const loginPagebound = async (
+  email: string,
+  password: string,
+): Promise<PageboundSession | null> => {
   const apiKey = firebaseApiKey();
-  if (!apiKey) {
-    throw new Error(
-      'Pagebound sign-in is disabled: NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY is empty.',
-    );
-  }
+  if (!apiKey) return null;
   const res = await tauriFetch(signInUrl(apiKey), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -190,11 +186,8 @@ export class PageboundClient {
     const trimmed = query.trim();
     if (!trimmed) return [];
     const apiKey = typesenseApiKey();
-    if (!apiKey) {
-      throw new Error(
-        'Pagebound search is disabled: NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY is empty.',
-      );
-    }
+    // The integration is switched off: there is nothing to search.
+    if (!apiKey) return [];
     const params = new URLSearchParams({
       q: trimmed,
       query_by: 'title,author_name',

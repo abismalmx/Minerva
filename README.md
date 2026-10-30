@@ -1,49 +1,168 @@
 <div align="center">
   <img src="https://github.com/minerva/minerva/blob/main/apps/minerva-app/src-tauri/icons/icon.png?raw=true" alt="Minerva" width="120" />
   <h1>Minerva</h1>
-  <p><strong>El lector de libros electronicos con sincronizacion propia.</strong></p>
+  <p><strong>Tu servidor de sincronizacion de libros, sobre Cloudflare.</strong></p>
   <br>
 
 [![CI](https://github.com/minerva/minerva/actions/workflows/pull-request.yml/badge.svg)](https://github.com/minerva/minerva/actions/workflows/pull-request.yml)
 [![Secret scan](https://github.com/minerva/minerva/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/minerva/minerva/actions/workflows/secret-scan.yml)
 [![Licencia](https://img.shields.io/badge/licencia-AGPL--3.0-teal)](LICENSE)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1%20%2B%20R2-f38020)](https://workers.cloudflare.com)
+[![KOSync](https://img.shields.io/badge/KOSync-compatible-4a90d9)](https://koreader.rocks/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Tauri](https://img.shields.io/badge/Tauri-2-orange)](https://v2.tauri.app)
-[![Rust](https://img.shields.io/badge/Rust-1.90%2B-orange)](https://www.rust-lang.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org)
 [![pnpm](https://img.shields.io/badge/pnpm-11.1.1-yellow)](https://pnpm.io)
 
 </div>
 
 ---
 
-## Que es Minerva
+## Que es este repositorio
 
-Minerva es un lector de libros electronicos multiplataforma: lee EPUB, PDF, MOBI,
-AZW3, FB2, CBZ, TXT, HTML y Markdown en escritorio (macOS, Windows, Linux), en
-movil (Android, iOS) y en la web. Por debajo combina **Next.js 16** para la
-interfaz y **Tauri 2** para el backend nativo, con una base de datos local en
-SQLite y un motor de busqueda integrated.
+Minerva es el **backend de sincronizacion de libros** que funciona sobre tu
+propia cuenta de Cloudflare. Un solo **Worker** (Node.js) sirve la API, una
+base **D1** (SQLite) guarda cuentas, biblioteca, notas y progressing, y un
+bucket **R2** guarda los libros, las portadas y los archivos.
 
-Lo que distingue a Minerva es su **capa de sincronizacion**. No depende de un
-servicio de terceros: el backend de sincronizacion es un proyecto propio
-—`apps/minerva-app/workers/minerva-sync`— que corre como un **Cloudflare
-Worker** sobre **D1** (SQLite) y **R2** (almacenamiento de objetos). Se
-despliega con un solo comando, funciona en una cuenta gratuita de Cloudflare y
-se puede auditar entero porque el codigo esta aqui, en este repositorio.
+```
+┌───────────────┐        ┌──────────────────────────────┐
+│  Minerva      │  HTTPS │  Cloudflare Worker            │
+│  (escritorio, │ ─────► │  minerva-sync                 │
+│   movil, web) │        │  ├─ D1  (SQLite)  cuentas,    │
+│               │        │  │    libros, notas, réplicas │
+│  KOReader     │ ─────► │  └─ R2  libros, portadas       │
+└───────────────┘        └──────────────────────────────┘
+```
+
+La app lee y escribe contra **tu** servidor: no hay cuenta de por medio, no
+hay trafico hacia terceros y no hay que pagar. Ademas habla el protocolo
+**KOSync**, asi que **KOReader** puede usar el mismo servidor para su propia
+sincronizacion de progreso.
+
+- **Dos superficies en el mismo Worker**: la API nativa de Minerva
+  (`/api/sync`, `/api/storage/*`, `/api/auth/*`, `/api/user/*`) y la API
+  compatible con KOSync (`/users/create`, `/users/auth`, `/syncs/progress`).
+- **La misma API que el servicio alojado**: una build sin modificar habla con
+  este Worker solo con pointed `NEXT_PUBLIC_API_BASE_URL` a el.
+- **Gratis**: cabe de sobra en el plan gratuito de Cloudflare (100 000
+  peticiones/dia, 10 GB en R2, sin coste de salida). No hace falta tarjeta.
+- **Cifrado en el cliente**: las campos sensibles se cifran con una clave
+  derivada de tu *passphrase de sincronizacion*; el servidor solo guarda la
+  sal y el texto cifrado. Y la *passphrase de cuenta* nunca se guarda: solo
+  una derivacion con PBKDF2 (600 000 iteraciones) o su MD5 en la superficie
+  KOSync.
+
+---
+
+## Despliegue en un comando
+
+```bash
+git clone --recurse-submodules https://github.com/minerva/minerva.git
+cd minerva
+
+# Sesion de Cloudflare (abre el navegador la primera vez)
+npx wrangler login
+
+# Crea D1, crea R2, genera el secreto, aplica las migraciones y publica
+# el Worker. Es idempotente: se puede volver a ejecutar.
+./deploy-cloudflare.sh
+```
+
+El script imprime la URL del Worker al terminar y deja la app configurada en
+`apps/minerva-app/.env.local`.
+
+<details>
+<summary>Que hace exactamente, paso a paso</summary>
+
+| Paso | Que ocurre |
+| ---- | ---------- |
+| 1 | Comprueba las herramientas y la sesion de Cloudflare (`wrangler whoami` / `wrangler login`). |
+| 2 | Crea la base **D1** `minerva-sync` (o reutiliza la existente) y extrae su `database_id`. |
+| 3 | Crea el bucket **R2** `minerva-library` (o reutiliza el existente). |
+| 4 | Escribe el `database_id` y el `bucket_name` en `wrangler.toml` sin tocar el resto de tu configuracion. |
+| 5 | Genera un `JWT_SECRET` de 32 bytes y lo registra en **Cloudflare Secrets** (nunca en `wrangler.toml`). |
+| 6 | Aplica las migraciones remotas (`0001` a `0004`). |
+| 7 | Publica el Worker `minerva-cloudflare` en `*.workers.dev`. |
+| 8 | Comprueba `/health` y escribe `NEXT_PUBLIC_API_BASE_URL` en `apps/minerva-app/.env.local`. |
+
+Para rotar el secreto sin invalidar las sesiones: `./deploy-cloudflare.sh --rotate-secret`.
+
+</details>
+
+### Variables de entorno
+
+Solo hacen falta si quieres hacer el despliegue a mano. La lista completa
+esta en [`.env.example`](.env.example).
+
+| Clave | Que hace | Valor por defecto |
+| ----- | -------- | ----------------- |
+| `CF_ACCOUNT_ID` | Tu cuenta de Cloudflare | — |
+| `CF_R2_BUCKET` | Bucket R2 de los libros | `minerva-library` |
+| `CF_D1_DATABASE_ID` | Base D1 de la sincronizacion | — |
+| `JWT_SECRET` | Secreto de firma del Worker (32+ caracteres) | lo genera el script |
+| `SYNC_PASSPHRASE` | Passphrase de sincronizacion (cifra en el cliente) | la escribes en la app |
+| `NEXT_PUBLIC_API_BASE_URL` | Origen de tu Worker | el que imprime el script |
+| `SELF_HOSTED_BACKEND` | Autentica contra tu Worker | `true` |
+| `ALLOWED_ORIGINS` | Origenes del navegador autorizados | `*` |
+| `MAX_UPLOAD_BYTES` | Techo de subida por libro | `104857600` (100 MB) |
+| `STORAGE_FIXED_QUOTA` | Cuota por cuenta, en bytes | `0` (sin cuota) |
+
+`SELF_HOSTED_BACKEND` y `SELF_HOSTED` son interruptores distintos:
+
+- `SELF_HOSTED_BACKEND=true` cambia la **capa de cuenta**: te registras con
+  email + passphrase contra tu Worker y el trafico no sale de tu cuenta.
+- `SELF_HOSTED=true` **desbloquea las funciones de pago**: en un despliegue
+  propio no hay tienda y todas quedan disponibles.
+
+### Desarrollo local del Worker
+
+```bash
+cd apps/minerva-app/workers/minerva-sync
+
+pnpm install
+pnpm migrate     # aplica el esquema en el D1 local
+pnpm dev         # wrangler dev en http://localhost:8787
+
+# En otra terminal
+curl -s http://localhost:8787/health
+# {"status":"ok"}
+```
+
+El runbook completo —verificacion automatizada, verificacion manual entre
+dispositivos, mantenimiento, copia de seguridad y rollback— esta en
+**[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
+
+---
+
+## Conectar la app a tu servidor
+
+1. Abre Minerva: **Ajustes → Sincronizacion → Minerva Cloud (Cloudflare)**.
+2. Pega la URL del Worker y pulsa **Probar conexion**.
+3. Registra una cuenta con email y *passphrase*. El servidor solo guarda una
+   derivacion con PBKDF2: **no puede recuperar tu passphrase**, asi que
+   guardala.
+4. En otro dispositivo, entra con el mismo email y la misma passphrase: la
+   biblioteca, el progreso, las notas y los marcadores se sincronizan.
+
+Para KOReader: **Ajustes → Sincronizacion → KOReader** (o el menu
+sincronizacion de KOReader), con la URL del Worker, tu email y tu passphrase.
+
+---
+
+## La app
+
+Minerva es un lector de libros electronicos multiplataforma —escritorio
+(macOS, Windows, Linux), movil (Android, iOS) y web— con Next.js 16 y
+Tauri 2. Este repositorio lo publica para que puedas **autoalojar su
+sincronizacion**; la app y el Worker se despliegan por separado.
 
 | | |
 | --- | --- |
 | **Formatos** | EPUB, PDF, MOBI, KF8 (AZW3), FB2, CBZ, TXT, HTML, MD |
 | **Plataformas** | macOS, Windows, Linux, Android, iOS, Web (PWA) |
-| **Sincronizacion** | Cloudflare Workers + D1 + R2, autoalojable |
+| **Sincronizacion** | Cloudflare Workers + D1 + R2, autoalojable, KOSync |
 | **Base de datos local** | SQLite (Turso) con busqueda full-text |
-| **IA** | Asistente de lectura con proveedores OpenAI-compatibles (Gemini, Ollama, ...) |
 | **Licencia** | AGPL-3.0 |
-
----
-
-## Instalacion
 
 ### Requisitos
 
@@ -52,153 +171,36 @@ se puede auditar entero porque el codigo esta aqui, en este repositorio.
 | [Node.js](https://nodejs.org) | 24 | interfaz y build de Next.js |
 | [pnpm](https://pnpm.io/installation) | 11.1.1 | gestor de paquetes del monorepo |
 | [Rust](https://www.rust-lang.org/tools/install) | 1.90 o superior | backend nativo de Tauri |
-| [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) | segun el sistema | librerias del sistema para compilar la app |
+| [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) | segun el sistema | librerias del sistema |
 
-El backend autoalojado solo necesita un navegador y una cuenta de Cloudflare
-(plan gratuito suficiente).
+Para el **Worker** solo hacen falta Node.js y una cuenta de Cloudflare.
 
 ### Clonar y preparar el arbol
 
-Minerva usa **submodulos de Git** para las dependencias que tienen su propio
-upstream (el motor de lectura, el fork de Tauri, los diccionarios). Sin ellos
-el workspace de pnpm no resuelve:
+El workspace de pnpm usa **submodulos de Git** para las dependencias con
+upstream propio (el motor de lectura, el fork de Tauri, los diccionarios):
 
 ```bash
 git clone --recurse-submodules https://github.com/minerva/minerva.git
 cd minerva
 
-# Si ya tenias el repositorio clonado sin submodulos:
+# Si ya lo tenias clonado sin submodulos:
 git submodule update --init --recursive
 
 pnpm install --frozen-lockfile
 pnpm --filter @minerva/app setup-vendors
 ```
 
-`setup-vendors` copia los assets de PDF.js desde `packages/foliate-js` a
-`apps/minerva-app/public/vendor`. Es necesario para que el lector de PDF
-funcione.
-
-### Ejecutar
+### Ejecutar y compilar
 
 ```bash
-# Interfaz web (solo navegador, sin compilar Rust: el ciclo mas rapido)
-pnpm dev-web
-
-# Aplicacion de escritorio (compila el backend Rust)
-pnpm tauri dev
+pnpm dev-web              # interfaz web (sin compilar Rust: el ciclo rapido)
+pnpm tauri dev            # aplicacion de escritorio
+pnpm --filter @minerva/app build-web   # build web
+pnpm tauri build          # binarios de escritorio en target/release/bundle/
 ```
 
-La interfaz web queda en `http://localhost:3000`.
-
-### Compilar
-
-```bash
-# Build web (Cloudflare Workers / OpenNext)
-pnpm --filter @minerva/app build-web
-
-# Build de escritorio: produce los binarios en target/release/bundle/
-pnpm tauri build
-```
-
----
-
-## Variables de entorno
-
-**El repositorio no publica ninguna credencial.** No hay ningun `.env` versionado:
-lo que se versiona es [`.env.example`](.env.example), con los nombres de las
-variables y sin valores.
-
-Las variables se leen de `apps/minerva-app/.env` (Next.js lo carga solo) y de
-`apps/minerva-app/.env.tauri` / `.env.web`, que ya estan cubiertos por sus
-plantillas (`.env.tauri.example`, `.env.web.example`): los scripts de build los
-cargan como alternativa, asi que un clon recien hecho compila sin crear ningun
-dotfile.
-
-### Lo minimo para trabajar
-
-| Clave | Que hace | Valor por defecto |
-| ----- | -------- | ----------------- |
-| `NEXT_PUBLIC_APP_PLATFORM` | Plataforma de la build: `tauri` o `web` | `tauri` / `web`, segun el script |
-| `NEXT_PUBLIC_API_BASE_URL` | Origen del backend de API (la app anade `/api`) | el backend de Minerva |
-| `NEXT_PUBLIC_SUPABASE_URL` | Proyecto Supabase de la capa de cuenta | el de Minerva Cloud |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anon de ese proyecto | la de Minerva Cloud |
-
-### Cuentas de usuario y sincronizacion
-
-| Clave | Que hace | Valor por defecto |
-| ----- | -------- | ----------------- |
-| `SELF_HOSTED_BACKEND` | `true` cambia la capa de cuenta al Worker propio | `false` |
-| `NEXT_PUBLIC_SELF_HOSTED_BACKEND` | Lo mismo, para el navegador | `false` |
-| `NEXT_PUBLIC_API_BASE_URL` | Origen del Worker de sincronizacion | — |
-| `SUPABASE_ADMIN_KEY` | Clave de servicio, **solo en el servidor** | — |
-| `STORAGE_FIXED_QUOTA` | Cuota de almacenamiento por usuario, en bytes | `0` |
-
-### Servicios de terceros
-
-| Clave | Que hace | Valor por defecto |
-| ----- | -------- | ----------------- |
-| `DEEPL_PRO_API_KEYS` / `DEEPL_FREE_API_KEYS` | Traduccion con DeepL (separadas por coma) | sin traduccion |
-| `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` | Telemetria (PostHog) | el proyecto de Minerva |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_BASE64` | Clave publicable de Stripe (base64) | la de Minerva |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Pagos, **solo en el servidor** | — |
-| `NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY` | Clave de cliente de Firebase para Pagebound | la de Pagebound |
-| `NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY` | Clave de solo busqueda de Typesense | la de Pagebound |
-| `R2_*` / `S3_*` | Almacenamiento de libros y portadas | — |
-
-Los identificadores publicos del servicio alojado (Supabase, PostHog, Stripe) y
-las claves publicas de Pagebound estan compilados en
-[`src/services/publicDefaults.ts`](apps/minerva-app/src/services/publicDefaults.ts),
-de modo que la aplicacion funciona sin ningun dotfile. **Ninguno es un
-secreto**: viajan dentro del bundle del navegador por diseño. Las variables de
-entorno de la tabla tienen prioridad sobre ellos.
-
-La tabla completa, con las 100 variables que lee el proyecto, esta en
-[`.env.example`](.env.example); el stack de Docker autoalojado tiene la suya en
-[`docker/.env.example`](docker/.env.example).
-
----
-
-## Estructura del proyecto
-
-```text
-minerva/
-├── apps/
-│   ├── minerva-app/                 # aplicacion (Next.js 16 + Tauri 2)
-│   │   ├── src/                     # interfaz, servicios y estado
-│   │   ├── src-tauri/               # backend nativo en Rust
-│   │   ├── workers/                 # Cloudflare Workers
-│   │   │   ├── minerva-sync/        # backend de sincronizacion (D1 + R2)
-│   │   │   ├── iap-reconcile/       # conciliacion de compras in-app
-│   │   │   └── send-email/          # recepcion de correo de las extensiones
-│   │   └── extensions/              # extension del navegador "Send to Minerva"
-│   ├── minerva-calibre-plugin/      # plugin de Calibre
-│   ├── minerva-crosspoint-plugin/   # plugin de CrossPoint
-│   └── minerva.koplugin/            # plugin para KOReader (Lua)
-├── packages/
-│   ├── foliate-js/                  # motor de lectura (submodulo)
-│   ├── js-mdict/                    # diccionarios MDict (submodulo)
-│   ├── qcms/                        # decodificador CMYK de PDF (submodulo)
-│   ├── simplecc-wasm/               # resaltado de codigo en WASM (submodulo)
-│   ├── swift-rs/                    # fork de swift-rs (vendorizado)
-│   ├── tauri/                       # fork de Tauri (submodulo)
-│   └── tauri-runtime-cef-stub/      # stub del runtime CEF para Linux
-├── data/                            # iconos, capturas y metadatos de release
-├── docker/                          # stack de despliegue con Docker Compose
-├── docs/                            # especificaciones y runbooks
-├── fastlane/                        # automatizacion de publicacion en tiendas
-├── nix/                             # empaquetado Nix
-├── scripts/                         # utilidades de desarrollo y despliegue
-└── .github/                         # CI, plantillas de issues y politicas
-```
-
-Las rutas `packages/foliate-js`, `packages/js-mdict`, `packages/qcms`,
-`packages/simplecc-wasm` y `packages/tauri` son **submodulos**: `git clone
---recurse-submodules` los deja en su sitio y `git submodule update
---init --recursive` los restaura.
-
----
-
-## Scripts de desarrollo
+### Scripts de desarrollo
 
 Todos se ejecutan desde la raiz del monorepo.
 
@@ -213,63 +215,61 @@ Todos se ejecutan desde la raiz del monorepo.
 | `pnpm --filter @minerva/app test:browser` | Tests de navegador (Chromium) |
 | `pnpm --filter @minerva/app test:tauri` | Tests de integracion de Tauri |
 | `pnpm --filter @minerva/app test:lua` | Tests del plugin de KOReader |
-| `pnpm --filter @minerva/app test:extension` | Tests de la extension del navegador |
 | `pnpm fmt:check` / `pnpm clippy:check` | `cargo fmt` / `cargo clippy` del backend Rust |
-| `pnpm --filter @minerva/app test:rust` | Tests unitarios de Rust |
 | `pnpm check:eink-identity` | Comprueba la paridad de la lista de identidad en e-ink |
-| `pnpm deploy:cloudflare` | Despliega el backend de sincronizacion (ver abajo) |
+| `pnpm deploy:cloudflare` | Despliega el Worker (ver mas arriba) |
 
-El CI ejecuta los mismos comandos; su definicion esta en
-[`.github/workflows/pull-request.yml`](.github/workflows/pull-request.yml).
+Los tests del Worker (que ejecutan las migraciones reales contra un SQLite
+real) viven en la suite de la app:
+
+```bash
+cd apps/minerva-app
+pnpm test --run src/__tests__/workers/
+```
 
 ---
 
-## Despliegue
+## Estructura del proyecto
 
-### Backend de sincronizacion autoalojado
-
-El runbook completo esta en **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**:
-requisitos, aprovisionamiento, migraciones, verificacion automatica y manual
-entre dispositivos, mantenimiento y rollback.
-
-```bash
-# Aprovisiona D1, R2, el secreto JWT, aplica las migraciones y publica
-# el Worker `minerva-cloudflare` en un solo comando.
-./scripts/deploy-cloudflare.sh
+```text
+minerva/
+├── apps/
+│   ├── minerva-app/                 # aplicacion (Next.js 16 + Tauri 2)
+│   │   ├── src/                     # interfaz, servicios y estado
+│   │   ├── src-tauri/               # backend nativo en Rust
+│   │   ├── workers/
+│   │   │   ├── minerva-sync/        # <-- el backend autoalojado
+│   │   │   │   ├── src/             #   Worker: rutas, auth, merge de réplicas
+│   │   │   │   ├── migrations/      #   esquema D1 (0001..0004)
+│   │   │   │   └── wrangler.toml    #   bindings de D1 y R2
+│   │   │   ├── iap-reconcile/       # conciliacion de compras in-app
+│   │   │   └── send-email/          # recepcion de correo de las extensiones
+│   │   └── extensions/              # extension del navegador "Send to Minerva"
+│   ├── minerva-calibre-plugin/      # plugin de Calibre
+│   ├── minerva-crosspoint-plugin/   # plugin de CrossPoint
+│   └── minerva.koplugin/            # plugin para KOReader (Lua)
+├── packages/                        # dependencias con upstream propio (submodulos)
+├── data/                            # iconos, capturas y metadatos de release
+├── docs/                            # runbooks y especificaciones
+├── fastlane/                        # automatizacion de publicacion en tiendas
+├── nix/                             # empaquetado Nix
+├── scripts/                         # utilidades de desarrollo y despliegue
+└── .github/                         # CI, plantillas de issues y politicas
 ```
-
-Despues, en la app: **Ajustes → Sincronizacion → Minerva Cloud
-(Cloudflare)**, pega la URL del Worker y pulsa **Probar conexion**.
-
-### Aplicacion de escritorio y web
-
-| Objetivo | Comando |
-| -------- | ------- |
-| Linux (AppImage) | `pnpm --filter @minerva/app build-linux-x64` |
-| Windows (NSIS) | `pnpm --filter @minerva/app build-win-x64` |
-| macOS (DMG) | `pnpm --filter @minerva/app build-macos-universial` |
-| Web (Cloudflare) | `pnpm --filter @minerva/app deploy` |
-| Docker Compose | `docker compose -f docker/compose.yaml up -d` |
-
-Los parametros de la imagen de Docker estan en
-[`docker/compose.yaml`](docker/compose.yaml) y su plantilla de secretos en
-[`docker/.env.example`](docker/.env.example).
 
 ---
 
 ## Contribucion
 
 Las Pull Requests son bienvenidas. Antes de enviar una:
-1. Lee [`CONTRIBUTING.md`](CONTRIBUTING.md) y [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-2. Abre una issue si el cambio es una opinion sobre el producto; los cambios
-   de codigo se discute antes en la issue.
-3. Instala los hooks con `pnpm install` (husky) y valida antes de subir:
-   `pnpm lint`, `pnpm test --run` y, si tocas Rust, `pnpm fmt:check` y
-   `pnpm clippy:check`.
 
-La guia de arquitectura y la disposicion del codigo estan en
-[`apps/minerva-app/docs/architecture.md`](apps/minerva-app/docs/architecture.md)
-y [`apps/minerva-app/docs/code-layout.md`](apps/minerva-app/docs/code-layout.md).
+1. Lee [`CONTRIBUTING.md`](CONTRIBUTING.md) y [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+2. Abre una issue si el cambio es una opinion sobre el producto.
+3. Valida antes de subir: `pnpm lint`, `pnpm test --run` y, si tocas Rust,
+   `pnpm fmt:check` y `pnpm clippy:check`.
+
+La guia de arquitectura esta en
+[`apps/minerva-app/docs/architecture.md`](apps/minerva-app/docs/architecture.md).
 
 Si encuentras una vulnerabilidad, **no abras una issue publica**: sigue la
 politica de [`SECURITY.md`](SECURITY.md).
@@ -299,9 +299,6 @@ Fuentes tipograficas incluidas o servidas por la web: [Bitter](https://fonts.goo
 [Source Han](https://github.com/adobe-fonts/source-han-sans/) y
 [WenQuanYi Micro Hei](http://wenq.org/wqy2/).
 
-Gracias al [Web Chinese Fonts Plan](https://chinese-font.netlify.app) por las
-herramientas de codigo abierto que permiten usar fuentes chinas en la web.
-
 ## Licencia
 
 Minerva es software libre bajo la **GNU Affero General Public License v3.0** o
@@ -309,5 +306,4 @@ posterior. El texto completo esta en [`LICENSE`](LICENSE).
 
 Minerva es un proyecto independiente. Su origen, el trabajo previo del que
 deriva, los avisos de autoria y la atribucion a las personas y proyectos que
-lo hicieron posible estan en [`NOTICE`](NOTICE), que forma parte de la
-documentacion de esta licencia.
+lo hicieron posible estan en [`NOTICE`](NOTICE).

@@ -89,9 +89,7 @@ describe('loginPagebound', () => {
   test('reports that sign-in is switched off when the Firebase key is empty', async () => {
     vi.stubEnv('NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY', '');
 
-    await expect(loginPagebound('a@b.c', 'pw')).rejects.toThrow(
-      /NEXT_PUBLIC_PAGEBOUND_FIREBASE_API_KEY is empty/,
-    );
+    await expect(loginPagebound('a@b.c', 'pw')).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -149,12 +147,10 @@ describe('PageboundClient', () => {
     expect(params.get('sort_by')).toBe('rating_count:desc');
   });
 
-  test('reports that search is switched off when the Typesense key is empty', async () => {
+  test('search is switched off when the Typesense key is empty', async () => {
     vi.stubEnv('NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY', '');
 
-    await expect(newClient().searchBooks('hail mary')).rejects.toThrow(
-      /NEXT_PUBLIC_PAGEBOUND_TYPESENSE_API_KEY is empty/,
-    );
+    await expect(newClient().searchBooks('hail mary')).resolves.toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

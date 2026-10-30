@@ -5,18 +5,17 @@ import { ReactNode } from 'react';
 import { PostHogProvider } from 'posthog-js/react';
 import { applyPostHogConsent, getTelemetryDecision } from '@/utils/telemetry';
 import { getAppVersion } from '@/utils/version';
-import { decodeBase64, PUBLIC_DEFAULTS } from '@/services/publicDefaults';
 
-const posthogUrl =
-  process.env['NEXT_PUBLIC_POSTHOG_HOST'] ||
-  decodeBase64(
-    process.env['NEXT_PUBLIC_DEFAULT_POSTHOG_URL_BASE64'] || PUBLIC_DEFAULTS.posthogUrlBase64,
-  );
-const posthogKey =
-  process.env['NEXT_PUBLIC_POSTHOG_KEY'] ||
-  decodeBase64(
-    process.env['NEXT_PUBLIC_DEFAULT_POSTHOG_KEY_BASE64'] || PUBLIC_DEFAULTS.posthogKeyBase64,
-  );
+/**
+ * Telemetry is optional. Without a PostHog key there is no client to
+ * initialize, so the SDK is never started and the provider is left out
+ * instead of being mounted around an uninitialized client.
+ */
+const posthogUrl = process.env['NEXT_PUBLIC_POSTHOG_HOST'] || '';
+const posthogKey = process.env['NEXT_PUBLIC_POSTHOG_KEY'] || '';
+
+/** Whether telemetry is configured for this deployment. */
+export const isPostHogEnabled = () => Boolean(posthogKey);
 
 let initialized = false;
 
@@ -64,5 +63,8 @@ export const initPostHog = () => {
 };
 
 export const CSPostHogProvider = ({ children }: { children: ReactNode }) => {
+  // Without a PostHog key there is no client to mount: the children are
+  // rendered as they are and no telemetry is collected.
+  if (!posthogKey) return <>{children}</>;
   return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
 };
