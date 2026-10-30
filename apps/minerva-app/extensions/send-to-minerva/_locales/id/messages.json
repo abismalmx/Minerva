@@ -1,0 +1,14 @@
+{
+  "app_name": {
+    "message": "Kirim ke Minerva",
+    "description": "Extension name shown in the browser toolbar and the Chrome Web Store listing."
+  },
+  "app_description": {
+    "message": "Simpan halaman web di perpustakaan Minerva Anda",
+    "description": "Short description shown in the Chrome Web Store listing."
+  },
+  "action_title": {
+    "message": "Kirim ke Minerva",
+    "description": "Tooltip on the toolbar action button."
+  }
+}

@@ -1,0 +1,270 @@
+# Spanish translation for the Minerva calibre plugin.
+# Copyright (C) 2026 Bilingify LLC
+# This file is distributed under the same license as the Minerva calibre plugin.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Minerva calibre plugin\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-13 12:37+0000\n"
+"PO-Revision-Date: 2026-10-13 22:40+0000\n"
+"Last-Translator: Bilingify LLC\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Push selected books and their metadata into your Minerva cloud library. Re-pushing a book updates its existing entry instead of creating a duplicate."
+msgstr "Envíe los libros seleccionados y sus metadatos a su biblioteca en la nube de Minerva. Al volver a enviar un libro se actualiza su entrada existente en lugar de crear un duplicado."
+
+msgid "Not logged in."
+msgstr "No ha iniciado sesión."
+
+msgid "Include custom columns in pushed metadata"
+msgstr "Incluir columnas personalizadas en los metadatos enviados"
+
+msgid "Only change this if you run a self-hosted Minerva server."
+msgstr "Cambie esto solo si utiliza un servidor Minerva autoalojado."
+
+msgid "Logged in as %s."
+msgstr "Sesión iniciada como %s."
+
+msgid "API server:"
+msgstr "Servidor de API:"
+
+msgid "Use the Minerva toolbar menu to log in or out."
+msgstr "Use el menú Minerva de la barra de herramientas para iniciar o cerrar sesión."
+
+msgid "Push to Minerva"
+msgstr "Enviar a Minerva"
+
+msgid "Push to Minerva failed"
+msgstr "Error al enviar a Minerva"
+
+msgid "Minerva status"
+msgstr "Estado de Minerva"
+
+msgid "Minerva status check failed"
+msgstr "Error al comprobar el estado de Minerva"
+
+msgid "Log in to Minerva"
+msgstr "Iniciar sesión en Minerva"
+
+msgid "Email:"
+msgstr "Correo electrónico:"
+
+msgid "Password:"
+msgstr "Contraseña:"
+
+msgid "Log in"
+msgstr "Iniciar sesión"
+
+msgid "Logging in…"
+msgstr "Iniciando sesión…"
+
+msgid "Waiting for the browser login to complete…"
+msgstr "Esperando que se complete el inicio de sesión en el navegador…"
+
+msgid "Unknown"
+msgstr "Desconocido"
+
+msgid "Pushing %d book to your Minerva library…"
+msgid_plural "Pushing %d books to your Minerva library…"
+msgstr[0] "Enviando %d libro a su biblioteca Minerva…"
+msgstr[1] "Enviando %d libros a su biblioteca Minerva…"
+
+msgid "Checking %d book against your Minerva library…"
+msgid_plural "Checking %d books against your Minerva library…"
+msgstr[0] "Comprobando %d libro contra su biblioteca Minerva…"
+msgstr[1] "Comprobando %d libros contra su biblioteca Minerva…"
+
+msgid "Or sign in with your browser:"
+msgstr "O inicie sesión con su navegador:"
+
+msgid "Please enter both email and password."
+msgstr "Introduzca el correo electrónico y la contraseña."
+
+msgid "Login failed: the browser callback carried no session."
+msgstr "Error de inicio de sesión: la respuesta del navegador no contenía ninguna sesión."
+
+msgid "Book"
+msgstr "Libro"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Details"
+msgstr "Detalles"
+
+msgid "Canceling…"
+msgstr "Cancelando…"
+
+msgid "Browser login timed out. Try again."
+msgstr "El inicio de sesión en el navegador caducó. Inténtelo de nuevo."
+
+msgid "Login failed: %s"
+msgstr "Error de inicio de sesión: %s"
+
+msgid "Minerva Login"
+msgstr "Inicio de sesión en Minerva"
+
+msgid "Completing login…"
+msgstr "Completando el inicio de sesión…"
+
+msgid "Login complete. You can close this tab and return to calibre."
+msgstr "Inicio de sesión completado. Puede cerrar esta pestaña y volver a calibre."
+
+msgid "Minerva"
+msgstr "Minerva"
+
+msgid "Push selected books and metadata to your Minerva library"
+msgstr "Enviar los libros seleccionados y sus metadatos a su biblioteca Minerva"
+
+msgid "Select the books to push to Minerva."
+msgstr "Seleccione los libros que desea enviar a Minerva."
+
+msgid "Select the books to check against Minerva."
+msgstr "Seleccione los libros que desea comprobar con Minerva."
+
+msgid "No books selected"
+msgstr "No hay libros seleccionados"
+
+msgid "Push selected books to Minerva"
+msgstr "Enviar los libros seleccionados a Minerva"
+
+msgid "Check Minerva status"
+msgstr "Comprobar el estado de Minerva"
+
+msgid "Log in to Minerva…"
+msgstr "Iniciar sesión en Minerva…"
+
+msgid "Log out"
+msgstr "Cerrar sesión"
+
+msgid "Customize plugin…"
+msgstr "Personalizar complemento…"
+
+msgid "Log out (%s)"
+msgstr "Cerrar sesión (%s)"
+
+msgid "your Minerva account"
+msgstr "su cuenta de Minerva"
+
+msgid "Uploaded"
+msgstr "Subido"
+
+msgid "Replaced"
+msgstr "Reemplazado"
+
+msgid "Updated"
+msgstr "Actualizado"
+
+msgid "Up to date"
+msgstr "Al día"
+
+msgid "Failed"
+msgstr "Fallido"
+
+msgid "In Minerva"
+msgstr "En Minerva"
+
+msgid "Metadata differs"
+msgstr "Metadatos diferentes"
+
+msgid "Out of date"
+msgstr "Obsoleto"
+
+msgid "Not in Minerva"
+msgstr "No en Minerva"
+
+msgid "No Minerva-supported format (EPUB, PDF, ...)"
+msgstr "Ningún formato compatible con Minerva (EPUB, PDF, ...)"
+
+msgid "Book file is missing from the calibre library"
+msgstr "El archivo del libro falta en la biblioteca de calibre"
+
+msgid "Nothing to push."
+msgstr "Nada que enviar."
+
+msgid "Nothing to check."
+msgstr "Nada que comprobar."
+
+msgid "Please log in to Minerva first. (%s)"
+msgstr "Inicie sesión en Minerva primero. (%s)"
+
+msgid "Could not reach Minerva: %s"
+msgstr "No se pudo contactar con Minerva: %s"
+
+msgid "Canceled."
+msgstr "Cancelado."
+
+msgid "Minerva storage quota exceeded — push stopped."
+msgstr "Cuota de almacenamiento de Minerva superada: envío detenido."
+
+msgid "Session expired — please log in again."
+msgstr "Sesión caducada: inicie sesión de nuevo."
+
+msgid "Login failed"
+msgstr "Error de inicio de sesión"
+
+msgid "Not logged in"
+msgstr "No ha iniciado sesión"
+
+msgid "Session expired, please log in again"
+msgstr "Sesión caducada, inicie sesión de nuevo"
+
+msgid "Not authenticated"
+msgstr "No autenticado"
+
+msgid "Request failed (%s)"
+msgstr "Error en la solicitud (%s)"
+
+msgid "Upload failed (%s)"
+msgstr "Error al subir (%s)"
+
+msgid "%d uploaded"
+msgid_plural "%d uploaded"
+msgstr[0] "%d subido"
+msgstr[1] "%d subidos"
+
+msgid "%d replaced"
+msgid_plural "%d replaced"
+msgstr[0] "%d reemplazado"
+msgstr[1] "%d reemplazados"
+
+msgid "%d updated"
+msgid_plural "%d updated"
+msgstr[0] "%d actualizado"
+msgstr[1] "%d actualizados"
+
+msgid "%d up to date"
+msgid_plural "%d up to date"
+msgstr[0] "%d al día"
+msgstr[1] "%d al día"
+
+msgid "%d failed"
+msgid_plural "%d failed"
+msgstr[0] "%d fallido"
+msgstr[1] "%d fallidos"
+
+msgid "%d in Minerva"
+msgid_plural "%d in Minerva"
+msgstr[0] "%d en Minerva"
+msgstr[1] "%d en Minerva"
+
+msgid "%d metadata differs"
+msgid_plural "%d metadata differs"
+msgstr[0] "%d con metadatos diferentes"
+msgstr[1] "%d con metadatos diferentes"
+
+msgid "%d out of date"
+msgid_plural "%d out of date"
+msgstr[0] "%d obsoleto"
+msgstr[1] "%d obsoletos"
+
+msgid "%d not in Minerva"
+msgid_plural "%d not in Minerva"
+msgstr[0] "%d no está en Minerva"
+msgstr[1] "%d no están en Minerva"

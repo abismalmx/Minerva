@@ -1,0 +1,3 @@
+pnpm -C apps/minerva-app format:check
+pnpm -C apps/minerva-app lint
+pnpm -C apps/minerva-app test

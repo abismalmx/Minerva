@@ -1,0 +1,50 @@
+name = "minerva-cloudflare"
+main = "src/index.ts"
+compatibility_date = "2026-04-10"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = true
+
+# The library bucket: book files, covers and replica blobs. The native sync API
+# serves them through short-lived signed URLs minted here, so the bucket can
+# stay private.
+[[r2_buckets]]
+binding = "LIBRARY_BUCKET"
+bucket_name = "minerva-library"
+
+# The sync database: users, books, configs, notes, reading stats and the
+# replica (settings / shelves / translators) tables.
+[[d1_databases]]
+binding = "SYNC_DB"
+database_name = "minerva-sync"
+database_id = "00000000-0000-0000-0000-000000000000"
+# Point this at your own database before deploying:
+#   wrangler d1 create minerva-sync
+#   wrangler d1 migrations apply minerva-sync --remote
+
+# Where the client sends its sync traffic. `workers.dev` works out of the box;
+# set a custom domain by adding a [[routes]] block, e.g.
+#   [[routes]]
+#   pattern = "sync.example.com"
+#   zone_name = "example.com"
+#   custom_domain = true
+[vars]
+# Comma-separated list of origins allowed to call the API from a browser.
+# "*" allows any origin (the default for a personal deployment).
+ALLOWED_ORIGINS = "*"
+# Max bytes for a single book upload. Cloudflare's Worker body limit is 100 MB
+# on the free plan; uploads above it must go through the signed-URL path.
+MAX_UPLOAD_BYTES = "104857600"
+# The operator's own storage limit, in bytes. A self-hosted deployment has no
+# store to buy from, so this is the quota the app reports. 0 means no limit.
+STORAGE_FIXED_QUOTA = "0"
+# PBKDF2 iterations used to stretch account passphrases. The cost is paid on
+# every registration and every sign-in, so a deployment with a tight CPU
+# budget can lower it; the default (600 000, the OWASP recommendation) is
+# used when this is absent, and the count is stored with each hash, so
+# changing it never invalidates the accounts that already exist.
+PASSPHRASE_KDF_ITERATIONS = "600000"
+
+[observability]
+enabled = true
+head_sampling_rate = 0.1

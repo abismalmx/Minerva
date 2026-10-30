@@ -1,0 +1,35 @@
+{
+  "name": "@minerva/monorepo",
+  "private": true,
+  "repository": "minerva/minerva",
+  "scripts": {
+    "deploy:cloudflare": "bash scripts/deploy-cloudflare.sh",
+    "test": "pnpm --filter @minerva/app test",
+    "test:lua": "pnpm --filter @minerva/app test:lua",
+    "lint": "pnpm --filter @minerva/app lint",
+    "lint:lua": "pnpm --filter @minerva/app lint:lua",
+    "check:eink-identity": "node scripts/check-eink-identity-sync.mjs",
+    "tauri": "pnpm --filter @minerva/app tauri",
+    "dev-web": "pnpm --filter @minerva/app dev-web",
+    "prepare": "husky",
+    "fmt:check": "pnpm --filter @minerva/app fmt:check",
+    "clippy:check": "pnpm --filter @minerva/app clippy:check",
+    "worktree:new": "pnpm --filter @minerva/app worktree:new",
+    "worktree:rm": "pnpm --filter @minerva/app worktree:rm",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "packageManager": "pnpm@11.1.1",
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
+    "@sindresorhus/tsconfig": "^6.0.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^16.2.7",
+    "typescript": "^5"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,css,json}": [
+      "biome format --write --no-errors-on-unmatched"
+    ]
+  }
+}

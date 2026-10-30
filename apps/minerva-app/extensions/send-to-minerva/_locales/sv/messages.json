@@ -1,0 +1,14 @@
+{
+  "app_name": {
+    "message": "Skicka till Minerva",
+    "description": "Extension name shown in the browser toolbar and the Chrome Web Store listing."
+  },
+  "app_description": {
+    "message": "Spara webbsidor i ditt Minerva-bibliotek",
+    "description": "Short description shown in the Chrome Web Store listing."
+  },
+  "action_title": {
+    "message": "Skicka till Minerva",
+    "description": "Tooltip on the toolbar action button."
+  }
+}

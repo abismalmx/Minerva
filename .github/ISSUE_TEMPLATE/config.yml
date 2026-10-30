@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentacion
+    url: https://github.com/minerva/minerva#readme
+    about: Consulta primero el README y la carpeta docs/.
+  - name: Guia de despliegue
+    url: https://github.com/minerva/minerva/blob/main/docs/DEPLOYMENT.md
+    about: Runbook del backend autoalojado (Cloudflare Workers + D1 + R2).
+  - name: Discusiones
+    url: https://github.com/minerva/minerva/discussions
+    about: Preguntas abiertas y propuestas de mejora.

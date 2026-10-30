@@ -1,0 +1,19 @@
+{
+  "name": "minerva-selfhost-sync-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted Minerva sync backend: Cloudflare Worker over D1 (SQLite) + R2, serving the native Minerva sync API and a KOSync-compatible API",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "migrate": "wrangler d1 migrations apply minerva-sync --local",
+    "migrate:remote": "wrangler d1 migrations apply minerva-sync --remote"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

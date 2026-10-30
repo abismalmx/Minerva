@@ -1,0 +1,21 @@
+Minerva
+=======
+
+Minerva is a modified version (fork) of Readest, https://github.com/readest/readest
+Copyright (C) Bilingify LLC and the Readest contributors.
+
+Both the original work and the modifications made in Minerva are distributed
+under the GNU Affero General Public License, version 3 or (at your option) any
+later version. The full text is in the LICENSE file. The original copyright and
+license notices are preserved, as the license requires.
+
+Modifications in Minerva include: a new name, visual identity (palette, typography,
+icons) and user-facing text. Their dates and authors are recorded in the version
+control history of this repository.
+
+Under section 13 of the AGPL, anyone who uses a modified Minerva over a network
+must be offered the corresponding source code. Publish your source repository
+and set its URL in the About dialog (src/components/AboutWindow.tsx).
+
+Third-party components keep their own licenses; see the "Acknowledgments"
+section of README.md.

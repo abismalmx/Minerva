@@ -1,0 +1,6 @@
+node_modules
+.wrangler
+# The local secrets file for `wrangler dev`. It holds JWT_SECRET and must
+# never be committed — the pattern has to match the DOT-prefixed name.
+.dev.vars
+.dev.vars.*

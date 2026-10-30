@@ -1,0 +1,14 @@
+{
+  "app_name": {
+    "message": "Minerva'ga yuborish",
+    "description": "Extension name shown in the browser toolbar and the Chrome Web Store listing."
+  },
+  "app_description": {
+    "message": "Veb-sahifalarni Minerva kutubxonangizga saqlang",
+    "description": "Short description shown in the Chrome Web Store listing."
+  },
+  "action_title": {
+    "message": "Minerva'ga yuborish",
+    "description": "Tooltip on the toolbar action button."
+  }
+}

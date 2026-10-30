@@ -1,0 +1,32 @@
+{
+  "title": "Minerva",
+  "description": "Your Minerva library and reading statistics on CrossPoint.",
+  "token": { "file": "/.crosspoint/.minerva-token.json", "path": "access_token" },
+  "browse": {
+    "url": "https://web.minerva.invalid/api/crosspoint/books?page={page}&per_page=8",
+    "headers": { "Authorization": "Bearer {token}" },
+    "items": "items",
+    "fields": { "title": "title", "author": "author", "id": "id", "url": "url" },
+    "page_size": 8,
+    "search": {
+      "url": "https://web.minerva.invalid/api/crosspoint/books?q={query}&page={page}&per_page=8"
+    }
+  },
+  "download": {
+    "url": "{url}",
+    "headers": { "Authorization": "Bearer {token}" },
+    "url_path": "downloadUrl",
+    "dest_dir": "/Minerva",
+    "filename": "{title}.epub"
+  },
+  "events": {
+    "reader.session": {
+      "request": {
+        "url": "https://web.minerva.invalid/api/crosspoint/sessions",
+        "headers": { "Authorization": "Bearer {token}", "Content-Type": "application/json" },
+        "body": "{\"document\":\"{event.document}\",\"start_time\":{event.start_time},\"duration\":{event.duration_seconds},\"start_bp\":{event.start_progress_bp},\"end_bp\":{event.end_progress_bp}}"
+      },
+      "connect": true
+    }
+  }
+}
