@@ -35,6 +35,8 @@ yarn-error.log*
 
 # certs and keys
 /private_keys
+# TLS certs that `next dev --experimental-https` generates with mkcert
+/certificates
 
 # plists
 Entitlements*.plist
