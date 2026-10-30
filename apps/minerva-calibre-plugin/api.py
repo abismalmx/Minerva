@@ -26,14 +26,11 @@ except NameError:
         return text
 
 DEFAULT_API_BASE = 'https://web.minerva.invalid/api'
-DEFAULT_SUPABASE_URL = 'https://vbsyxfusjjqdxkjqlysc.supabase.co'
-# Public anon key, same one minerva.koplugin ships (base64-encoded in main.lua).
-DEFAULT_ANON_KEY = (
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
-    'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZic3l4ZnVzampxZHhranFseXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3'
-    'MzQxMjM2NzEsImV4cCI6MjA0OTY5OTY3MX0.'
-    '3U5Uqaou_1SgrVe1eo9rApc0uKjqhpQdUXhvwUHmUfg'
-)
+# The hosted account layer is not part of this fork: nothing is hardcoded.
+# The operator points the plugin at their own account service in the plugin
+# preferences (`supabase_url`), and the credentials stay in that account.
+DEFAULT_SUPABASE_URL = ''
+DEFAULT_ANON_KEY = ''
 
 TIMEOUT = 30
 UPLOAD_TIMEOUT = 600
@@ -222,6 +219,13 @@ class MinervaClient:
     def _auth_headers(self):
         return {'apikey': self.anon_key, 'Accept': 'application/json'}
 
+    def _require_account_service(self):
+        """The account service is optional: a deployment without one cannot sign in."""
+        if not self.supabase_url:
+            raise MinervaAPIError(
+                _('No account service configured. Set the server URL in the plugin settings.')
+            )
+
     def _store_tokens(self, body):
         self.tokens = {
             'access_token': body.get('access_token'),
@@ -233,6 +237,7 @@ class MinervaClient:
             self.on_tokens(dict(self.tokens))
 
     def sign_in_password(self, email, password):
+        self._require_account_service()
         status, parsed, payload = self._request(
             'POST',
             self.supabase_url + '/auth/v1/token?grant_type=password',
@@ -252,6 +257,7 @@ class MinervaClient:
         refresh_token = self.tokens and self.tokens.get('refresh_token')
         if not refresh_token:
             raise AuthRequiredError(_('Not logged in'))
+        self._require_account_service()
         status, parsed, payload = self._request(
             'POST',
             self.supabase_url + '/auth/v1/token?grant_type=refresh_token',

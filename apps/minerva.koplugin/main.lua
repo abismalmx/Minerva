@@ -5,7 +5,6 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local NetworkMgr = require("ui/network/manager")
 local UIManager = require("ui/uimanager")
 local logger = require("logger")
-local sha2 = require("ffi/sha2")
 local T = require("ffi/util").template
 local _ = require("minerva_i18n")
 
@@ -36,11 +35,13 @@ local BACKGROUND_PULL_DELAY = 1
 local function wifiEnableAction()
     return G_reader_settings:readSetting("wifi_enable_action") or "prompt"
 end
-local SUPABAE_ANON_KEY_BASE64 = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5aaWMzbDRablZ6YW1weFpIaHJhbkZzZVhOaklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTXpReE1qTTJOekVzSW1WNGNDSTZNakEwT1RZNU9UWTNNWDAuM1U1VXFhb3VfMVNnclZlMWVvOXJBcGMwdUtqcWhwUWRVWGh2d1VIbVVmZw=="
-
+-- The hosted account layer is optional. A self-hosted deployment has no
+-- Supabase project: the plugin then talks to its own Minerva Sync Worker
+-- instead (see minerva-syncauth.lua, which skips the Supabase client when
+-- either value is empty). Nothing is hardcoded here on purpose.
 MinervaSync.default_settings = {
-    supabase_url = "https://vbsyxfusjjqdxkjqlysc.supabase.co",
-    supabase_anon_key = sha2.base64_to_bin(SUPABAE_ANON_KEY_BASE64),
+    supabase_url = "",
+    supabase_anon_key = "",
     auto_sync = false,
     user_email = nil,
     user_name = nil,
@@ -67,7 +68,6 @@ function MinervaSync:init()
     if self.settings.supabase_url == "https://readest.supabase.co" then
         self.settings.supabase_url = self.default_settings.supabase_url
     end
-
     local meta = dofile(self.path .. "/_meta.lua")
     self.installed_version = meta and meta.version and tostring(meta.version)
 
