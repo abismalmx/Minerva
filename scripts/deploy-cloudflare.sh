@@ -65,6 +65,26 @@ if ! command -v npx >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo -e "${RED}Error: pnpm no está disponible en el PATH.${NC}" >&2
+  exit 1
+fi
+
+# pnpm aquí puede ser el shim de corepack. Si corepack está desactualizado
+# frente a la versión de pnpm fijada en package.json (packageManager), la
+# descarga/activación falla con un stack trace críptico de Node en lugar de
+# un mensaje claro. Lo detectamos aquí y pedimos actualizar dependencias.
+if ! pnpm --version >/tmp/minerva-pnpm-check.$$ 2>&1; then
+  echo -e "${RED}Error: pnpm no pudo ejecutarse correctamente.${NC}" >&2
+  echo -e "${YELLOW}Esto normalmente significa que tus dependencias de Node (corepack/pnpm) están desactualizadas o en conflicto, no que el proyecto esté roto.${NC}" >&2
+  echo -e "${YELLOW}Actualiza corepack y vuelve a intentarlo:${NC}" >&2
+  echo -e "  ${BOLD}sudo npm install -g corepack@latest${NC}" >&2
+  echo -e "${YELLOW}Si tienes otra instalación de corepack/pnpm en ~/.local/bin que tape la del sistema, bórrala para que se use la actualizada.${NC}" >&2
+  rm -f /tmp/minerva-pnpm-check.$$
+  exit 1
+fi
+rm -f /tmp/minerva-pnpm-check.$$
+
 # 2. Comprobar sesión de Cloudflare
 echo -e "${BOLD}[2/7] Comprobando autenticación en Cloudflare...${NC}"
 if ! npx wrangler whoami >/dev/null 2>&1; then
@@ -106,15 +126,10 @@ if [ -n "$DB_UUID" ]; then
   echo -e "${GREEN}✓ Base D1 encontrada: ${BOLD}$TARGET_DB_NAME${NC} (ID: $DB_UUID)"
 else
   echo -e "Creando base D1: ${BOLD}$DB_NAME${NC}..."
-  CREATE_RES=$(npx wrangler d1 create "$DB_NAME" --json 2>/dev/null || true)
-  DB_UUID=$(node -e '
-    try {
-      const res = JSON.parse(process.argv[1]);
-      console.log(res.uuid || res.database_id || "");
-    } catch {
-      console.log("");
-    }
-  ' "$CREATE_RES")
+  # Nota: wrangler 4.x ya no soporta --json en "d1 create" (deprecado), así
+  # que creamos sin esa flag y recuperamos el UUID vía "d1 list --json".
+  npx wrangler d1 create "$DB_NAME" >/dev/null 2>&1 || true
+  DB_UUID=""
 
   # Fallback si el output no fue json puro
   if [ -z "$DB_UUID" ]; then
