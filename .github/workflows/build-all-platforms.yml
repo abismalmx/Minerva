@@ -89,6 +89,13 @@ jobs:
           export NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358
           pnpm tauri android build ${{ matrix.args }}
 
+      - name: Build Windows Thumbnail DLL (Windows only)
+        if: matrix.platform == 'windows'
+        run: |
+          cargo build --package windows_thumbnail --release --target ${{ matrix.target }}
+          mkdir -p extensions/windows-thumbnail/target
+          cp target/${{ matrix.target }}/release/windows_thumbnail.dll extensions/windows-thumbnail/target/ || cp target/release/windows_thumbnail.dll extensions/windows-thumbnail/target/ || true
+
       - name: Build Desktop (Windows, macOS, Linux)
         if: matrix.platform != 'android'
         run: |
@@ -100,6 +107,12 @@ jobs:
         with:
           name: minerva-${{ matrix.platform }}-${{ matrix.target }}
           path: |
+            target/**/bundle/**/*.exe
+            target/**/bundle/**/*.msi
+            target/**/bundle/**/*.dmg
+            target/**/bundle/**/*.app
+            target/**/bundle/**/*.AppImage
+            target/**/bundle/**/*.deb
             apps/minerva-app/src-tauri/target/**/bundle/**/*.exe
             apps/minerva-app/src-tauri/target/**/bundle/**/*.msi
             apps/minerva-app/src-tauri/target/**/bundle/**/*.dmg

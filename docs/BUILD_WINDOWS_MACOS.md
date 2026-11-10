@@ -135,6 +135,24 @@ and `src-tauri/tauri.appstore-dev.conf.json`, and
 `tauri.windows.conf.json` are present. The macOS App Store build therefore
 fails before it starts, on any host.
 
+## Gaps in `.github/workflows/build-all-platforms.yml`
+
+That workflow builds the four targets on native runners, which is the right
+shape: Windows needs a Windows host for the NSIS bundler, macOS needs a macOS
+host for the SDK and the signing tools, and Android needs the NDK. Two things
+in it will not work as written:
+
+- **The Windows leg does not build the thumbnail DLL.**
+  `src-tauri/tauri.windows.conf.json` is merged automatically for a Windows
+  build and lists `../extensions/windows-thumbnail/target/windows_thumbnail.dll`
+  as a bundle resource, so the bundler fails on a missing file. The leg needs
+  the extra step from [the thumbnail DLL section](#the-thumbnail-dll-is-a-separate-crate).
+- **The desktop artifact paths do not exist.** `src-tauri` is a member of the
+  workspace at the repository root, so cargo writes to `target/` at the root;
+  `apps/minerva-app/src-tauri/target/` is never created. The upload paths
+  have to be `target/**/bundle/**`. The Android path is fine, since the
+  Gradle output really is under `src-tauri/gen/android/app/build/`.
+
 ## The Cargo.lock is stale, and that breaks the desktop builds
 
 `Cargo.lock` records `Minerva 0.2.2` while `package.json` says `1.0.5`, so
