@@ -206,7 +206,6 @@ export function classifyOccurrence(text, index, vendor) {
     if (window.includes(marker)) return 'telemetry';
   }
 
-  const original = text.slice(index, index + vendor.length);
   const before = text[index - 1];
   const after = text[index + vendor.length];
 
