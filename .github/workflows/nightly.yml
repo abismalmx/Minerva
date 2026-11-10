@@ -255,7 +255,12 @@ jobs:
         run: |
           version="${{ needs.compute-version.outputs.nightly_version }}"
           cd apps/minerva-app/
-          rm -rf src-tauri/gen/android
+          # The Android Studio project is tracked (it carries the FOSS flavor,
+          # the keystore signing config and the llvm-strip step, none of which
+          # the Tauri CLI template has). `tauri android init` only fills in the
+          # files that do not exist yet, so the tracked project survives it and
+          # `git checkout .` restores whatever the init touched. Do NOT delete
+          # the directory first: that would leave the vanilla template behind.
           pnpm tauri android init
           pnpm tauri icon ../../data/icons/minerva-book.png
           git checkout .

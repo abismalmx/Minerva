@@ -1,5 +1,16 @@
 name: Build Multiplatform Packages
 
+# Builds the four shipping targets from the current commit: the Windows
+# installer (plus a portable binary), the macOS universal DMG, the Linux
+# AppImage and the Android APK.
+#
+# Two rules this workflow follows, both checked by the "verify no telemetry"
+# step below:
+#   - no telemetry SDK may reach an artifact (the eradication commit 06f838a
+#     removed Sentry and PostHog from the sources);
+#   - no Apple or updater certificate may be required to produce a build, so
+#     a fork without secrets still gets working packages.
+
 on:
   workflow_dispatch:
   push:
@@ -9,6 +20,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-all-platforms-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-tauri:
     strategy:
@@ -17,53 +32,81 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            target: x86_64-pc-windows-msvc
+            # The portable binary and the installer share this target.
+            rust_target: x86_64-pc-windows-msvc
             args: '--target x86_64-pc-windows-msvc --bundles nsis'
+            artifacts: >-
+              target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+              target/x86_64-pc-windows-msvc/release/minerva.exe
           - os: macos-latest
             platform: macos
-            target: universal-apple-darwin
-            args: '--target universal-apple-darwin'
+            # A universal build needs BOTH apple triples; `universal-apple-darwin`
+            # is not a rustup target name and `rustup target add` rejects it.
+            rust_target: x86_64-apple-darwin,aarch64-apple-darwin
+            # The unsigned overlay (entitlements, no Apple-issued provisioning
+            # profile) and the CI overlay (no updater artifacts, so no updater
+            # signing key is needed). Nothing here needs an Apple certificate:
+            # the DMG is a direct-distribution package.
+            args: >-
+              --target universal-apple-darwin --bundles dmg
+              --config src-tauri/tauri.macos-unsigned.conf.json
+              --config src-tauri/tauri.ci.conf.json
+            artifacts: >-
+              target/universal-apple-darwin/release/bundle/dmg/*.dmg
+              target/universal-apple-darwin/release/bundle/macos/Minerva.app
           - os: ubuntu-22.04
             platform: linux
-            target: x86_64-unknown-linux-gnu
-            args: ''
+            rust_target: x86_64-unknown-linux-gnu
+            args: '--bundles appimage --config src-tauri/tauri.ci.conf.json'
+            artifacts: 'target/release/bundle/appimage/*.AppImage'
           - os: ubuntu-latest
             platform: android
-            target: aarch64-linux-android
+            rust_target: aarch64-linux-android
             args: '-t aarch64 --apk'
+            artifacts: >-
+              apps/minerva-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # No `version:` on purpose: the action reads the `packageManager` field
+        # of the root package.json (pnpm@11.1.1). Pinning a different version
+        # here makes `pnpm install --frozen-lockfile` disagree with the
+        # committed lockfile.
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          node-version: 24
+          cache: pnpm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rust_target }}
 
       - name: Setup Java (Android only)
         if: matrix.platform == 'android'
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: '17'
 
       - name: Setup Android SDK (Android only)
         if: matrix.platform == 'android'
         uses: android-actions/setup-android@v3
+        with:
+          # The legacy `tools` package no longer exists and makes sdkmanager fail.
+          packages: 'platform-tools'
 
       - name: Install Android NDK (Android only)
         if: matrix.platform == 'android'
@@ -73,53 +116,159 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libfontconfig-dev libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev
+          sudo apt-get install -y pkg-config libfontconfig-dev libgtk-3-dev \
+            libwebkit2gtk-4.1 libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1 \
+            libjavascriptcoregtk-4.1-dev gir1.2-javascriptcoregtk-4.1 \
+            gir1.2-webkit2-4.1 libappindicator3-dev librsvg2-dev patchelf \
+            xdg-utils libnss3 libpulse0 libspeechd2 libxkbcommon-x11-0 \
+            squashfs-tools
+
+      # The npm cli-cef bundles the AppImage with a broken quick-sharun fork
+      # and cannot be pointed elsewhere. Build the CLI from minerva/tauri
+      # instead; scripts/tauri.mjs runs `cargo tauri` when TAURI_CEF_CARGO=1.
+      - name: Install the CEF tauri CLI from minerva/tauri (Linux only)
+        if: matrix.platform == 'linux'
+        env:
+          TAURI_CEF_CARGO: '1'
+        run: |
+          set -euo pipefail
+          rev=6beeb209b5514f597a26f48b7a5b9fe4c59b5f12
+          marker="$HOME/.cargo/bin/.cargo-tauri-rev"
+          if [ -x "$HOME/.cargo/bin/cargo-tauri" ] && [ "$(cat "$marker" 2>/dev/null)" = "$rev" ]; then
+            echo "cargo-tauri at $rev already installed"
+            exit 0
+          fi
+          cargo install tauri-cli --git https://github.com/readest/tauri --rev "$rev" --locked --force
+          echo "$rev" > "$marker"
+
+      # Chromium dlopens NSS, libpulse and libspeechd by soname; whatever the
+      # bundle lacks comes from the host at run time and fails against the
+      # bundled glibc on any newer distro. The three libraries are passed to
+      # quick-sharun as AppImage files.
+      - name: Stage CEF AppImage runtime libraries (Linux only)
+        if: matrix.platform == 'linux'
+        run: |
+          set -euo pipefail
+          nss_dir=$(dirname "$(ls /usr/lib/*-linux-gnu/nss/libsoftokn3.so)")
+          lib_dir=${nss_dir%/nss}
+          sudo cp -f --remove-destination "$nss_dir"/*.so "$lib_dir/"
+          # +=: tauri.conf.json already ships the AppRun hook entry.
+          conf=apps/minerva-app/src-tauri/tauri.conf.json
+          jq --arg d "$lib_dir" '.bundle.linux.appimage.files += {
+              "/usr/lib/libspeechd.so.2": ($d + "/libspeechd.so.2"),
+              "/usr/lib/libxkbcommon-x11.so.0": ($d + "/libxkbcommon-x11.so.0")
+            }' "$conf" > "$conf.tmp" && mv "$conf.tmp" "$conf"
+
+      # `src-tauri/tauri.windows.conf.json` lists the thumbnail DLL as a bundle
+      # resource, so the bundler fails when it is missing. The crate is its own
+      # cargo workspace (it is not a member of the root one), so it has to be
+      # built through its manifest, and its output lands in its own target/
+      # directory.
+      - name: Build the Windows thumbnail DLL (Windows only)
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          crate=apps/minerva-app/extensions/windows-thumbnail
+          cargo build \
+            --manifest-path "$crate/Cargo.toml" \
+            --release --target x86_64-pc-windows-msvc
+          mkdir -p "$crate/target"
+          cp "$crate/target/x86_64-pc-windows-msvc/release/windows_thumbnail.dll" \
+            "$crate/target/windows_thumbnail.dll"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+        run: pnpm install --frozen-lockfile
 
       - name: Setup vendor assets
         run: pnpm --filter @minerva/app setup-vendors
 
-      - name: Build Android APK
+      - name: Create .env.local file for Next.js
+        run: |
+          echo "NEXT_PUBLIC_APP_PLATFORM=tauri" >> .env.local
+          cp .env.local apps/minerva-app/.env.local
+
+      - name: Build the Android APK
         if: matrix.platform == 'android'
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
         run: |
           cd apps/minerva-app
-          export ANDROID_HOME=$ANDROID_HOME
-          export NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358
           pnpm tauri android build ${{ matrix.args }}
 
-      - name: Build Windows Thumbnail DLL (Windows only)
-        if: matrix.platform == 'windows'
-        run: |
-          cargo build --package windows_thumbnail --release --target ${{ matrix.target }}
-          mkdir -p extensions/windows-thumbnail/target
-          cp target/${{ matrix.target }}/release/windows_thumbnail.dll extensions/windows-thumbnail/target/ || cp target/release/windows_thumbnail.dll extensions/windows-thumbnail/target/ || true
-
-      - name: Build Desktop (Windows, macOS, Linux)
+      - name: Build the desktop bundles (Windows, macOS, Linux)
         if: matrix.platform != 'android'
+        env:
+          TAURI_CEF_CARGO: '1'
+          STRACE_MODE: '0'
+          NODE_OPTIONS: '--max-old-space-size=8192'
         run: |
           cd apps/minerva-app
           pnpm tauri build ${{ matrix.args }}
 
-      - name: Upload Build Artifacts
+      # The portable Windows binary is not produced by the bundler, so it is
+      # copied out of the build directory here.
+      - name: Stage the portable Windows binary (Windows only)
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p portable
+          cp target/x86_64-pc-windows-msvc/release/minerva.exe portable/Minerva-portable.exe
+
+      # The packages must not carry a telemetry SDK. The check decompresses
+      # the artifact first (an APK keeps its payload deflated), so it sees
+      # what actually ships.
+      - name: Verify no telemetry in the artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for pattern in ${{ matrix.artifacts }}; do
+            # shellcheck disable=SC2086
+            found=$(compgen -G "$pattern" || true)
+            if [ -z "$found" ]; then
+              echo "::error::no artifact matches $pattern"
+              failed=1
+              continue
+            fi
+            for artifact in $found; do
+              target="$artifact"
+              case "$artifact" in
+                *.AppImage)
+                  # The AppImage payload is a squashfs image; unpack it so the
+                  # JavaScript bundle inside is readable.
+                  rm -rf "$RUNNER_TEMP/appimage"
+                  unsquashfs -quiet -d "$RUNNER_TEMP/appimage" "$artifact"
+                  target="$RUNNER_TEMP/appimage"
+                  ;;
+                *.dmg)
+                  # Same for the DMG: the app lives in the mounted image.
+                  rm -rf "$RUNNER_TEMP/dmg"
+                  hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "$artifact"
+                  target="$RUNNER_TEMP/dmg"
+                  ;;
+                *.app)
+                  target="$artifact"
+                  ;;
+              esac
+              node apps/minerva-app/scripts/verify-no-telemetry.mjs "$target" || failed=1
+            done
+          done
+          exit $failed
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: minerva-${{ matrix.platform }}-${{ matrix.target }}
+          name: minerva-${{ matrix.platform }}
           path: |
-            target/**/bundle/**/*.exe
-            target/**/bundle/**/*.msi
-            target/**/bundle/**/*.dmg
-            target/**/bundle/**/*.app
-            target/**/bundle/**/*.AppImage
-            target/**/bundle/**/*.deb
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.exe
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.msi
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.dmg
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.app
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.AppImage
-            apps/minerva-app/src-tauri/target/**/bundle/**/*.deb
-            apps/minerva-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-msvc/release/minerva.exe
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            target/release/bundle/appimage/*.AppImage
+            apps/minerva-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+            portable/Minerva-portable.exe
+          if-no-files-found: error
 
   release:
     needs: build-tauri
@@ -128,16 +277,16 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            **/*.exe
-            **/*.msi
-            **/*.dmg
-            **/*.AppImage
-            **/*.deb
-            **/*.apk
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

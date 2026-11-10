@@ -43,8 +43,12 @@ Entitlements*.plist
 
 # local confs
 tauri.*.conf.json
-# tracked exception: the direct-distribution iCloud overlay ships in the repo
+# tracked exceptions: the direct-distribution overlay, the unsigned variant
+# (no Apple-issued provisioning profile) and the CI overlay (no updater
+# artifacts) ship in the repo
 !tauri.macos-nonestore.conf.json
+!tauri.macos-unsigned.conf.json
+!tauri.ci.conf.json
 
 # vercel
 .vercel
@@ -61,7 +65,14 @@ next-env.d.ts
 .eslintcache
 
 #generated
-src-tauri/gen
+# The Android Studio project IS tracked: it carries the FOSS/pen flavors, the
+# `keystore.properties` signing config and the llvm-strip step, none of which
+# the Tauri CLI template has. `tauri android init` only fills in files that do
+# not exist yet, so a tracked project survives it, and CI restores it with
+# `git checkout .` after regenerating it. Everything else under `gen/` is CLI
+# output and stays ignored.
+src-tauri/gen/*
+!src-tauri/gen/android/
 
 # local dev overrides (personal signing, etc.)
 src-tauri/tauri.*.local.json

@@ -1658,6 +1658,27 @@ El `secret-scan.yml` ejecuta **gitleaks** sobre el historial completo:
 
 El `codeql.yml` analiza `actions`, `javascript-typescript` y `rust` con `build-mode: none`, y el `scorecard.yml` publica el OpenSSF Scorecard.
 
+#### 6.5.5 Nivel 5 — Verificación binaria del artefacto
+
+Un `strings | grep -iE "sentry|posthog"` sobre el APK **no basta**: Tauri incrusta el bundle del frontend en la biblioteca nativa **comprimido con brotli**, así que el texto JavaScript no aparece en el binario, y el grep solo ve las cadenas sin comprimir (el binario Rust, el DEX). Para verificar de verdad lo que se distribuye, `apps/minerva-app/scripts/verify-no-telemetry.mjs` descomprime el artefacto antes de buscar:
+
+```bash
+# El artefacto completo (descomprime el APK y busca en cada entrada)
+node apps/minerva-app/scripts/verify-no-telemetry.mjs \
+  apps/minerva-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+
+# El frontend incrustado (los blobs brotli de tauri-codegen)
+node apps/minerva-app/scripts/verify-no-telemetry.mjs --brotli \
+  target/aarch64-linux-android/release/build/Minerva-*/out/tauri-codegen-assets
+```
+
+El script clasifica cada coincidencia en dos niveles:
+
+- **telemetry** — un SDK, un endpoint o una clave reales (`io.sentry`, `@sentry/`, `sentry.io`, `posthog.com`, `SentryInitProvider`, …). **Falla la compilación.**
+- **incidental** — el nombre del proveedor aparece solo como substring de otro identificador. En este proyecto son las propiedades de pdf.js que terminan en `Entry` (`canvasEntry`, `settingsEntry`, `hasXfaDatasetsEntry`): la «s» final de la palabra anterior más `Entry` forman «sentry». Se informa con su contexto para que una persona los confirme, pero no rompen la compilación.
+
+El paso `verify no telemetry` de `build-all-platforms.yml` ejecuta esta comprobación sobre cada artefacto de la matriz.
+
 ### 6.6 El modelo de seguridad en resumen
 
 El §*Threat Model* de [`SECURITY.md`](../SECURITY.md) es la referencia. Resumen:
@@ -1839,15 +1860,18 @@ Los *hooks* de NSIS (`src-tauri/nsis/installer-hooks.nsh`) registran y desregist
 
 **El proyecto Android lo genera la CLI de Tauri.** No es un proyecto Gradle puro: no existe `./gradlew assembleRelease`.
 
+**El proyecto Android está versionado.** `src-tauri/gen/android/` se hace seguimiento en git porque lleva el flavor FOSS, la configuración de firma (`keystore.properties`) y el paso `llvm-strip`, ninguno de los cuales está en la plantilla de la CLI. `tauri android init` solo rellena los archivos que aún no existen, así que el proyecto versionado sobrevive a la inicialización.
+
 **Inicialización (una vez):**
 
 ```bash
 cd apps/minerva-app
-rm -rf src-tauri/gen/android
 pnpm tauri android init
 pnpm tauri icon ../../data/icons/minerva-book.png
 git checkout .
 ```
+
+> No borres `src-tauri/gen/android` antes de la inicialización: eso elimina el proyecto versionado y deja la plantilla vanilla de la CLI, sin firma ni flavor FOSS.
 
 **Configuración de firma** — `src-tauri/gen/android/app/build.gradle.kts` lee `keystore.properties`:
 
@@ -1915,7 +1939,6 @@ src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-rele
 
 ```bash
 cd apps/minerva-app/
-rm -rf src-tauri/gen/android
 pnpm tauri android init
 pnpm tauri icon ../../data/icons/minerva-book.png
 git checkout .
@@ -1984,6 +2007,7 @@ El perfil de distribución directa lleva sus propios entitlements:
 {
   "bundle": {
     "macOS": {
+      "minimumSystemVersion": "12.0",
       "entitlements": "./profiles/direct-entitlements.plist",
       "files": {
         "embedded.provisionprofile": "./profiles/MinervaDeveloperID.provisionprofile"
@@ -1992,6 +2016,11 @@ El perfil de distribución directa lleva sus propios entitlements:
   }
 }
 ```
+
+Hay dos overlays más, ambos versionados:
+
+- `src-tauri/tauri.macos-unsigned.conf.json` — la misma configuración **sin** el perfil de aprovisionamiento. Es la que usa `build-all-platforms.yml`: un perfil emitido por Apple solo tiene sentido junto a su clave privada, así que un binario sin certificado no debe llevar uno incrustado.
+- `src-tauri/tauri.ci.conf.json` — desactiva `bundle.createUpdaterArtifacts`. Con los artefactos del actualizador activados, el empaquetador exige `TAURI_SIGNING_PRIVATE_KEY` y la compilación falla sin ese secreto.
 
 **Publicación en el Mac App Store** (`scripts/release-mac-appstore.sh`):
 

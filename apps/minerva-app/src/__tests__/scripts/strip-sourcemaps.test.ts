@@ -1,4 +1,12 @@
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+  copyFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
@@ -48,7 +56,43 @@ describe('stripMaps', () => {
     expect(readFileSync(path.join(dir, 'bbb.js'), 'utf8')).toBe('b();\n\n');
   });
 
+  it('removes the stylesheet maps too', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'strip-maps-css-'));
+    writeFileSync(path.join(dir, 'ccc.css'), 'body{}\n');
+    writeFileSync(path.join(dir, 'ccc.css.map'), '{"version":3}');
+
+    expect(stripMaps(dir)).toBe(1);
+    expect(readdirSync(dir)).toEqual(['ccc.css']);
+  });
+
   it('returns 0 for a missing directory', () => {
     expect(stripMaps(path.join(tmpdir(), 'strip-maps-does-not-exist'))).toBe(0);
+  });
+});
+
+describe('strip-sourcemaps CLI', () => {
+  it('strips the maps when the app lives under a path with spaces', () => {
+    // The script resolves `out/_next/static` relative to its own location, so
+    // run a copy of it from a temp app dir whose path contains a space. The
+    // entry-point guard compares `import.meta.url` with the invoked path, and
+    // `import.meta.url` percent-encodes the spaces: a naive concatenation
+    // never matches there and the script silently does nothing, which ships
+    // every source map (and the whole original source) inside the app bundle.
+    const scriptPath = path.join(process.cwd(), 'scripts', 'strip-sourcemaps.mjs');
+    const root = mkdtempSync(path.join(tmpdir(), 'strip sourcemaps cli '));
+    const scriptsDir = path.join(root, 'apps', 'minerva-app', 'scripts');
+    const staticDir = path.join(root, 'apps', 'minerva-app', 'out', '_next', 'static', 'chunks');
+    mkdirSync(scriptsDir, { recursive: true });
+    mkdirSync(staticDir, { recursive: true });
+    copyFileSync(scriptPath, path.join(scriptsDir, 'strip-sourcemaps.mjs'));
+    writeFileSync(path.join(staticDir, 'aaa.js'), 'a();\n\n//# sourceMappingURL=zzz.js.map\n');
+    writeFileSync(path.join(staticDir, 'zzz.js.map'), '{"version":3}');
+
+    execFileSync(process.execPath, [path.join(scriptsDir, 'strip-sourcemaps.mjs')], {
+      encoding: 'utf8',
+    });
+
+    expect(readdirSync(staticDir)).toEqual(['aaa.js']);
+    expect(readFileSync(path.join(staticDir, 'aaa.js'), 'utf8')).toBe('a();\n\n');
   });
 });

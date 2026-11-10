@@ -1,10 +1,10 @@
 // Strip browser source maps from the Tauri export build.
 //
 // Runs after `next build` (see the `build` script). `productionBrowserSourceMaps`
-// makes Next emit `.js.map` files next to the chunks in `out/_next/static`; this
-// script deletes them so the full original sources never ship inside the app
-// bundle, and drops the now-dangling `//# sourceMappingURL=` comment from every
-// chunk.
+// makes Next emit `.js.map` and `.css.map` files next to the chunks in
+// `out/_next/static`; this script deletes them so the full original sources
+// never ship inside the app bundle, and drops the now-dangling
+// `//# sourceMappingURL=` comment from every chunk.
 //
 // Set KEEP_SOURCEMAPS=1 to keep the maps in the bundle instead (see the
 // `dev-ios` / `dev-android` / `dev-macos` scripts): local devtools then resolve
@@ -12,7 +12,7 @@
 
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const staticDir = path.join(appDir, 'out', '_next', 'static');
@@ -34,7 +34,9 @@ export const stripMaps = (dir) => {
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) removed += stripMaps(full);
-    else if (entry.endsWith('.js.map')) {
+    else if (entry.endsWith('.map')) {
+      // Every source map, not only the JavaScript ones: Turbopack also emits
+      // `*.css.map`, which carries the stylesheet source just the same.
       rmSync(full);
       removed += 1;
     } else if (entry.endsWith('.js')) {
@@ -58,7 +60,12 @@ const main = () => {
   }
 
   const removed = stripMaps(staticDir);
-  console.log(`Stripped ${removed} .js.map file(s) from the app bundle.`);
+  console.log(`Stripped ${removed} source map file(s) from the app bundle.`);
 };
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main();
+// `import.meta.url` percent-encodes the path (a space becomes `%20`), so the
+// invoked path has to be turned into a URL before the two are compared. A
+// naive `'file://' + process.argv[1]` never matches under a path with spaces
+// and the script then does nothing at all, which ships every source map
+// (and with it the whole original source) inside the app bundle.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
