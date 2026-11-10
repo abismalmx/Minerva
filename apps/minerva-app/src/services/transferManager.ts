@@ -16,7 +16,7 @@ const RETRY_DELAY_BASE_MS = 2000;
 // transfer-store fan-out cannot sustain a synchronous React update storm (a
 // buffered download emits progress once per chunk in a microtask burst, and
 // transferSpeed changes every call so the store's no-op guard cannot help)
-// (Sentry MINERVA-2).
+// (MINERVA-2).
 const PROGRESS_THROTTLE_MS = 100;
 // Quota failures in a batch import arrive one per book as transfers drain;
 // collapse them into one summary toast per burst instead of N identical toasts.

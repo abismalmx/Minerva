@@ -50,7 +50,6 @@ mod nightly_update;
 mod parser_common;
 mod pdf_parser;
 mod range_file;
-mod sentry_config;
 #[cfg(desktop)]
 mod spawn_fresh_browser;
 mod transfer_file;
@@ -452,21 +451,6 @@ fn is_updater_disabled() -> bool {
     updater_disabled()
 }
 
-// Record the WebView engine/version so Sentry events can be correlated with
-// the WebView build. Chromium's UA-Reduction freezes the User-Agent to a stub
-// on Windows WebView2 (e.g. "152.0.0.0"), so prefer the version reported by
-// the runtime itself and keep the engine from the User-Agent parse. Called
-// once from `NativeAppService.init()`; no-op when Sentry is disabled.
-#[tauri::command]
-fn set_webview_info(user_agent: String) {
-    let parsed = sentry_config::parse_webview_info(&user_agent);
-    let version =
-        runtime_webview_version().or_else(|| parsed.as_ref().map(|(_, version)| version.clone()));
-    if let (Some((engine, _)), Some(version)) = (&parsed, version) {
-        sentry_config::set_webview_info(engine.clone(), version);
-    }
-}
-
 #[derive(serde::Serialize)]
 struct WebViewInfo {
     engine: String,
@@ -544,83 +528,6 @@ pub fn run() {
     #[cfg(all(feature = "cef", target_os = "linux"))]
     linux_single_instance::forward_to_running_instance(SINGLE_INSTANCE_DBUS_ID);
 
-    // Initialize Sentry as early as possible so panics during startup are
-    // captured. `None` DSN (unset SENTRY_DSN) => disabled, so local and fork
-    // builds don't report. This client covers Rust panics and the events the
-    // WebView forwards; native crashes belong to the sentry-android /
-    // sentry-cocoa SDKs on mobile and go unreported on desktop, where the
-    // out-of-process minidump handler is deliberately off (see the
-    // `minidump_feature_is_enabled_on_no_target` test). The guard must outlive
-    // the app, so it is held until `run()` returns (after the blocking
-    // `.run(...)` call).
-    let sentry_guard = sentry_config::sentry_dsn().map(|dsn| {
-        sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                release: Some(sentry_config::sentry_release().into()),
-                environment: Some(sentry_config::sentry_environment().into()),
-                traces_sample_rate: 0.0,
-                send_default_pii: false,
-                // On Android the context integration reads `uname()` and reports
-                // the OS as "Linux"; relabel it "Android" (and recover the Android
-                // version from the kernel string) so events group correctly.
-                before_send: Some(std::sync::Arc::new(|mut event| {
-                    // Drop known-benign browser noise (e.g. View Transition
-                    // skipped/aborted, ResizeObserver loop) before it is reported.
-                    if event.exception.values.iter().any(|ex| {
-                        ex.value
-                            .as_deref()
-                            .is_some_and(sentry_config::is_ignored_browser_error)
-                    }) {
-                        return None;
-                    }
-                    // Drop the contained MOBI cover panic: the `mobi` crate panics
-                    // on a corrupt cover record, which extract_cover catch_unwinds
-                    // (the import still succeeds), but the panic hook reports it
-                    // anyway. Match our own frame so unrelated slice panics stay.
-                    if event.exception.values.iter().any(|ex| {
-                        ex.stacktrace.iter().any(|st| {
-                            st.frames.iter().any(|f| {
-                                f.function
-                                    .as_deref()
-                                    .is_some_and(sentry_config::is_mobi_cover_panic_frame)
-                            })
-                        })
-                    }) {
-                        return None;
-                    }
-                    if let Some(sentry::protocol::Context::Os(os)) = event.contexts.get_mut("os") {
-                        if let Some(name) = sentry_config::corrected_os_name(
-                            std::env::consts::OS,
-                            os.name.as_deref(),
-                        ) {
-                            os.name = Some(name.to_owned());
-                            if let Some(version) = os
-                                .version
-                                .as_deref()
-                                .and_then(sentry_config::android_version_from_uname)
-                            {
-                                os.version = Some(version);
-                            }
-                        }
-                    }
-                    // Tag the WebView engine/version (reported by the app at
-                    // startup) so crashes can be correlated with it.
-                    if let Some((engine, version)) = sentry_config::webview_info() {
-                        event
-                            .tags
-                            .insert("webview.engine".to_string(), engine.clone());
-                        event
-                            .tags
-                            .insert("webview.version".to_string(), version.clone());
-                    }
-                    Some(event)
-                })),
-                ..Default::default()
-            },
-        ))
-    });
-
     let builder = tauri::Builder::<AppRuntime>::new();
 
     #[cfg(all(feature = "cef", target_os = "linux"))]
@@ -666,7 +573,6 @@ pub fn run() {
             get_executable_dir,
             #[cfg(desktop)]
             file_reveal::reveal_item_in_dir,
-            set_webview_info,
             get_webview_version,
             #[cfg(desktop)]
             is_updater_disabled,
@@ -801,11 +707,6 @@ pub fn run() {
 
     #[cfg(feature = "webdriver")]
     let builder = builder.plugin(tauri_plugin_webdriver::init());
-
-    let builder = match sentry_guard.as_ref() {
-        Some(client) => builder.plugin(tauri_plugin_sentry::init(client)),
-        None => builder,
-    };
 
     builder
         .setup(|#[allow(unused_variables)] app| {

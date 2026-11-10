@@ -256,7 +256,7 @@ export const useTransferStore = create<TransferState>((set, get) => ({
 
       // No-op when nothing meaningful changed: re-applying identical progress
       // would otherwise allocate a new state on every call and re-render every
-      // subscriber, sustaining a render/update loop (Sentry MINERVA-2).
+      // subscriber, sustaining a render/update loop (MINERVA-2).
       // transferSpeed is deliberately excluded: it is recomputed from wall-clock
       // time on every emission (utils/transfer.ts), so it is almost always
       // different and would defeat the guard. A speed-only delta is not worth a

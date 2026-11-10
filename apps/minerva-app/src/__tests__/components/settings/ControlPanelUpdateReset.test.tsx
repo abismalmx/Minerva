@@ -75,7 +75,6 @@ beforeEach(() => {
       globalViewSettings: { ...defaultViewSettings },
       autoCheckUpdates: false,
       updateChannel: 'nightly',
-      telemetryEnabled: false,
       gamepadEnabled: false,
     } as SystemSettings,
   });
@@ -100,7 +99,6 @@ describe('Behavior update settings reset', () => {
     expect.soft(savedSettings()).toMatchObject({
       autoCheckUpdates: true,
       updateChannel: 'stable',
-      telemetryEnabled: false,
       gamepadEnabled: false,
     });
 

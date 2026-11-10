@@ -781,11 +781,6 @@ const actionItems = [
     labelKey: _('About Minerva'),
     keywords: ['about', 'minerva', 'version', 'info'],
   },
-  {
-    id: 'action.telemetry',
-    labelKey: _('Help improve Minerva'),
-    keywords: ['telemetry', 'analytics', 'improve', 'statistics'],
-  },
 ];
 
 export interface CommandRegistryOptions {
@@ -798,7 +793,6 @@ export interface CommandRegistryOptions {
   reloadPage: () => void;
   toggleOpenLastBooks: () => void;
   showAbout: () => void;
-  toggleTelemetry: () => void;
   isDesktop: boolean;
   // TODO: add reader-specific actions when reader is open (tts, bookmark, etc.)
 }
@@ -939,13 +933,6 @@ export const buildCommandRegistry = (options: CommandRegistryOptions): CommandIt
     createActionItem({
       id: 'action.about',
       action: options.showAbout,
-    }),
-  );
-
-  items.push(
-    createActionItem({
-      id: 'action.telemetry',
-      action: options.toggleTelemetry,
     }),
   );
 

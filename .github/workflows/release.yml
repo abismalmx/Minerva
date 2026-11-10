@@ -485,15 +485,9 @@ jobs:
 
       - name: create .env.local file for Next.js
         run: |
-          echo "NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}" >> .env.local
-          echo "NEXT_PUBLIC_POSTHOG_HOST=${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}" >> .env.local
           echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env.local
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env.local
           echo "NEXT_PUBLIC_APP_PLATFORM=tauri" >> .env.local
-          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env.local
-          echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .env.local
-          echo "SENTRY_ORG=minerva" >> .env.local
-          echo "SENTRY_PROJECT=minerva" >> .env.local
           cp .env.local apps/minerva-app/.env.local
 
       - name: build and upload Android apk
@@ -504,7 +498,6 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           cd apps/minerva-app/
           rm -rf src-tauri/gen/android
@@ -523,15 +516,6 @@ jobs:
           apk=Minerva_${version}_${{ matrix.config.arch }}.apk
           pnpm tauri android build ${{ matrix.config.android_args }}
           cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk $apk
-
-          # Sentry symbolicates Rust panics from these: the APK ships the
-          # library stripped (see gen/android/app/build.gradle.kts), while
-          # `target/` keeps the unstripped copy. Crash reporting must never
-          # fail a build, and forks have no token.
-          if [ -n "$SENTRY_AUTH_TOKEN" ]; then
-            pnpm exec sentry-cli debug-files upload --org minerva --project minerva \
-              ../../target/*/release/libminervalib.so || echo "::warning::Sentry debug file upload failed"
-          fi
 
           echo "Uploading $apk to GitHub release"
           gh release upload ${{ needs.get-release.outputs.release_tag }} $apk --clobber

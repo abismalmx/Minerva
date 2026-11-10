@@ -2,13 +2,12 @@
 
 import '@/utils/polyfill';
 import i18n from '@/i18n/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { IconContext } from 'react-icons';
 import { AuthProvider } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
 import WindowResizeHandles from '@/components/WindowResizeHandles';
 import WindowOutline from '@/components/WindowOutline';
-import { CSPostHogProvider, initPostHog } from '@/context/PHContext';
 import { SyncProvider } from '@/context/SyncContext';
 import { initSystemThemeListener, loadDataTheme } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -21,18 +20,7 @@ import { useEinkMode } from '@/hooks/useEinkMode';
 import { getLocale } from '@/utils/misc';
 import { getDirFromUILanguage } from '@/utils/rtl';
 import { getAndroidPatchedViewportContent } from '@/utils/viewport';
-import {
-  getTelemetryDecision,
-  optInTelemetry,
-  optOutTelemetry,
-  reconcileTelemetryConsent,
-  rollIntoTelemetryPromptBucket,
-  setTelemetryDecision,
-} from '@/utils/telemetry';
 import { getLibraryViewSettings } from '@/helpers/settings';
-import { SETTINGS_FILENAME } from '@/services/constants';
-import type { AppService } from '@/types/system';
-import type { SystemSettings } from '@/types/settings';
 import { DropdownProvider } from '@/context/DropdownContext';
 import { CommandPaletteProvider, CommandPalette } from '@/components/command-palette';
 import AtmosphereOverlay from '@/components/AtmosphereOverlay';
@@ -41,76 +29,10 @@ import CarMediaLibraryBridge from '@/components/CarMediaLibraryBridge';
 import FileSyncReport from '@/components/FileSyncReport';
 import AppLockDialog from '@/components/settings/AppLockDialog';
 import PassphrasePrompt from '@/components/PassphrasePrompt';
-import TelemetryConsentDialog from '@/components/TelemetryConsentDialog';
 import { upgradeToKeychainIfAvailable } from '@/libs/crypto/passphrase';
 import { cryptoSession } from '@/libs/crypto/session';
 import { useAppLockStore } from '@/store/appLockStore';
 import { initSettingsSync } from '@/services/sync/replicaSettingsSync';
-
-// One-time, on first launch after this feature ships, decide how to handle
-// PostHog telemetry for the current install:
-//   - Existing user (settings file already on disk): preserve their current
-//     `telemetryEnabled` setting and persist a matching decision so we don't
-//     reconsider on every boot.
-//   - New user: silently opt 90% out and skip the prompt; show the consent
-//     dialog to the remaining 10%. Until the dialog is resolved their state
-//     is `pending` (opt-out at the PostHog layer).
-// If a decision has already been recorded, this is a no-op.
-const finalizeTelemetryDecision = ({
-  appService,
-  settings,
-  isNewUser,
-  onShowPrompt,
-}: {
-  appService: AppService;
-  settings: SystemSettings;
-  isNewUser: boolean;
-  onShowPrompt: () => void;
-}) => {
-  const existing = getTelemetryDecision();
-  if (existing === 'pending') {
-    onShowPrompt();
-    return;
-  }
-  if (existing !== null) {
-    // The decision is recorded. PostHog's consent can still drift from the
-    // settings file (a command-palette toggle, another window, or an edited
-    // settings file), so line the two up on every boot (issue #6422).
-    const telemetryEnabled = reconcileTelemetryConsent(settings.telemetryEnabled);
-    if (settings.telemetryEnabled !== telemetryEnabled) {
-      // A recorded opt-out wins over a stale `true` in the file. Save it so
-      // the settings switch shows telemetry as off.
-      settings.telemetryEnabled = telemetryEnabled;
-      void appService.saveSettings(settings);
-    }
-    return;
-  }
-
-  if (!isNewUser) {
-    // Existing user: keep their saved preference and record the decision so
-    // we stop checking.
-    if (settings.telemetryEnabled) {
-      optInTelemetry();
-    } else {
-      optOutTelemetry();
-    }
-    return;
-  }
-
-  // Brand-new user. Default to opt-out for privacy; ask only the prompt
-  // bucket so the rest get a friction-free first launch.
-  if (rollIntoTelemetryPromptBucket()) {
-    setTelemetryDecision('pending');
-    onShowPrompt();
-  } else {
-    optOutTelemetry();
-    // Persist the off-by-default to the settings file directly. The settings
-    // store isn't seeded yet at this point in boot, so saveSysSettings would
-    // write a malformed partial object — write through appService instead.
-    settings.telemetryEnabled = false;
-    void appService.saveSettings(settings);
-  }
-};
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   const { envConfig, appService } = useEnv();
@@ -123,7 +45,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     initialize: initializeAppLock,
   } = useAppLockStore();
   const iconSize = useDefaultIconSize();
-  const [showTelemetryConsent, setShowTelemetryConsent] = useState(false);
   useSafeAreaInsets(); // Initialize safe area insets
   useSettingsSync(); // Adopt global settings broadcast by other windows (#4580)
 
@@ -169,18 +90,8 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           );
         })
         .catch(() => {});
-      const hadSettingsFilePromise = appService.exists(SETTINGS_FILENAME, 'Settings');
       appService.loadSettings().then(async (settings) => {
         const globalViewSettings = settings.globalViewSettings;
-        const hadSettingsFile = await hadSettingsFilePromise.catch(() => false);
-        finalizeTelemetryDecision({
-          appService,
-          settings,
-          isNewUser: !hadSettingsFile,
-          onShowPrompt: () => setShowTelemetryConsent(true),
-        });
-        // Consent is final now, so PostHog may start.
-        initPostHog();
         applyUILanguage(globalViewSettings.uiLanguage);
         // Seed the customTextureStore with the disk-loaded textures (preserving
         // their saved ids) so the boot-time applyBackgroundTexture below can
@@ -259,7 +170,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   const appShellHidden = !isLockInitialized || !isUnlocked;
 
   return (
-    <CSPostHogProvider>
+    <div>
       <CarMediaLibraryBridge />
       <AuthProvider>
         <IconContext.Provider value={{ size: `${iconSize}px` }}>
@@ -278,10 +189,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <WindowResizeHandles />
                 </div>
                 <AppLockDialog />
-                <TelemetryConsentDialog
-                  open={showTelemetryConsent}
-                  onClose={() => setShowTelemetryConsent(false)}
-                />
                 {showAppLockScreen && <AppLockScreen />}
                 <WindowOutline />
               </CommandPaletteProvider>
@@ -289,7 +196,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           </SyncProvider>
         </IconContext.Provider>
       </AuthProvider>
-    </CSPostHogProvider>
+    </div>
   );
 };
 

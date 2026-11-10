@@ -11,8 +11,6 @@ import {
 } from 'react';
 import { User } from '@supabase/supabase-js';
 import { authClient } from '@/services/authClient';
-import { isPostHogEnabled } from '@/context/PHContext';
-import posthog from 'posthog-js';
 import {
   loadPersistedSession,
   savePersistedSession,
@@ -59,9 +57,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           refresh_token: refresh_token || access_token,
           user: user as unknown as { id: string; email: string },
         }).catch((e) => console.warn('Failed to persist session in syncSession:', e));
-        // The SDK throws when it was never initialized, which is the case for
-        // every deployment without a PostHog key.
-        if (isPostHogEnabled()) posthog.identify(user.id);
         setToken(access_token);
         setUser(user);
       } else {

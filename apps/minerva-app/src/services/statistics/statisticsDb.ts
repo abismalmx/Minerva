@@ -277,7 +277,7 @@ export class StatisticsDb {
     // Serialize against other pulls: the statistics connection is shared across
     // ReadingStatsTracker instances (split view), and a second concurrent pull
     // would open a BEGIN inside this one's still-open BEGIN ("cannot start a
-    // transaction within a transaction", Sentry MINERVA-N). The per-op native
+    // transaction within a transaction", MINERVA-N). The per-op native
     // lock can't make this multi-statement transaction atomic on its own.
     const prev = this.applyRemoteLock;
     let release!: () => void;

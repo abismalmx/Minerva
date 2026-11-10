@@ -505,7 +505,6 @@ export interface SystemSettings {
   autoImportBooksOnOpen: boolean;
   savedBookCoverForLockScreen: string;
   savedBookCoverForLockScreenPath: string;
-  telemetryEnabled: boolean;
   discordRichPresenceEnabled: boolean;
   bookshelves?: BookshelfState;
   libraryViewMode: LibraryViewModeType;

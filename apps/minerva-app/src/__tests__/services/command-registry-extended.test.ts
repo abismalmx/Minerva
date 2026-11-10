@@ -62,7 +62,6 @@ function createMockOptions(
     reloadPage: vi.fn(),
     toggleOpenLastBooks: vi.fn(),
     showAbout: vi.fn(),
-    toggleTelemetry: vi.fn(),
     isDesktop: false,
     ...overrides,
   };
@@ -99,7 +98,8 @@ describe('buildCommandRegistry', () => {
     expect(actionIds).toContain('action.fullscreen');
     expect(actionIds).toContain('action.reload');
     expect(actionIds).toContain('action.about');
-    expect(actionIds).toContain('action.telemetry');
+    // No telemetry command: PostHog was removed from the app.
+    expect(actionIds).not.toContain('action.telemetry');
   });
 
   it('should use the provided translation function for localized labels', () => {

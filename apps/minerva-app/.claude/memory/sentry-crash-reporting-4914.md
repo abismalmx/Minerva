@@ -1,11 +1,18 @@
 ---
 name: sentry-crash-reporting-4914
-description: Sentry crash reporting across JS/Rust/Android/iOS (PR
+description: "SUPERSEDED by telemetry-removed-2026-11 (2026-11-09): Sentry was fully removed from this fork. Kept as a historical record of the crash-reporting setup that no longer exists."
 metadata: 
   node_type: memory
   type: project
   originSessionId: e1238bc7-0b80-4036-b949-f9a2cf0045bc
 ---
+
+> **SUPERSEDED (2026-11-09).** Sentry was removed from this fork entirely — the
+> Rust crates, the Android `sentry-android` SDK, the manifest auto-init, the
+> DSN propagation in `build.rs` and the CI secret injection are all gone. See
+> [telemetry-removed-2026-11.md](telemetry-removed-2026-11.md). There is no crash
+> reporting in Minerva any more. Nothing below describes the current code; it is
+> kept as a historical record.
 
 Sentry crash/error reporting added in PR #4914 (`feat(sentry): add crash reporting for Android, iOS, desktop, and web`). Four layers, one build-time `SENTRY_DSN` (empty => every layer no-ops):
 

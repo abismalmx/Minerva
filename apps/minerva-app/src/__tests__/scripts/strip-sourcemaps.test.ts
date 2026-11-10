@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   stripSourceMappingComment as stripSourceMappingCommentUntyped,
   stripMaps as stripMapsUntyped,
-} from '../../../scripts/upload-sourcemaps.mjs';
+} from '../../../scripts/strip-sourcemaps.mjs';
 
 const stripSourceMappingComment = stripSourceMappingCommentUntyped as (code: string) => string;
 const stripMaps = stripMapsUntyped as (dir: string) => number;
@@ -18,9 +18,9 @@ describe('stripSourceMappingComment', () => {
     expect(stripSourceMappingComment(code)).toBe('console.log(1);\n\n');
   });
 
-  it('keeps the sentry-cli debugId comment', () => {
-    const code = 'console.log(1);\n//# sourceMappingURL=a.js.map\n//# debugId=abc-123\n';
-    expect(stripSourceMappingComment(code)).toBe('console.log(1);\n//# debugId=abc-123\n');
+  it('keeps other trailing comments', () => {
+    const code = 'console.log(1);\n//# sourceMappingURL=a.js.map\n//# someOtherComment=abc-123\n';
+    expect(stripSourceMappingComment(code)).toBe('console.log(1);\n//# someOtherComment=abc-123\n');
   });
 
   it('leaves code without a sourceMappingURL comment untouched', () => {

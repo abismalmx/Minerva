@@ -2,12 +2,11 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 // On Android, wry injects Tauri's init scripts into every frame, so each book
-// page iframe runs its own @sentry/browser. It wraps listeners passed to that
-// page's addEventListener and caches the wrapper on the function itself, so a
-// function attached to two pages runs through the first page's wrapper on
-// both. Once that page unloads, the browser stops calling its wrapper, and the
-// listener on every later page goes silent (the image long-press menu on PDF
-// pages never opened). Each page must get its own listener.
+// page iframe gets its own realm. A listener function shared across two page
+// documents is registered in the first page's realm; once that page unloads,
+// the browser stops calling it and the listener on every later page goes
+// silent (the image long-press menu on PDF pages never opened). Each page must
+// get its own listener.
 
 const h = vi.hoisted(() => ({
   appService: { isAndroidApp: true, isMobile: true },
@@ -190,8 +189,8 @@ import Annotator from '@/app/reader/components/annotator/Annotator';
 
 type Page = { doc: Document; unload: () => void };
 
-// A page document whose addEventListener behaves like Sentry's in that page:
-// the wrapper is cached on the listener, and it only runs while its page lives.
+// A page document that behaves like a real iframe realm: a listener registered
+// on it only runs while its page lives.
 const createPage = (): Page => {
   const doc = document.implementation.createHTMLDocument('page');
   let alive = true;

@@ -31,9 +31,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Emit browser source maps for the Tauri export build so Sentry can
-  // symbolicate crashes. `scripts/upload-sourcemaps.mjs` uploads them after the
-  // build and strips the .map files, so they never ship inside the app bundle.
+  // Emit browser source maps for the Tauri export build.
+  // `scripts/strip-sourcemaps.mjs` deletes them after the build so the full
+  // original sources never ship inside the app bundle.
   productionBrowserSourceMaps: exportOutput,
   // Monorepo: trace from the repo root so workspace packages land in the
   // standalone tree. Only relevant to — and only set for — the Docker build.

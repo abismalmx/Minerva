@@ -764,10 +764,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     // handled by the dedicated effect further down.
     //
     // Every listener below is a function of its own for this page. On Android
-    // and Windows each page iframe runs its own Sentry, which caches its
-    // listener wrapper on the function: a function shared by two pages would
-    // run through the first page's wrapper, which goes dead once that page
-    // unloads.
+    // and Windows each page iframe is its own realm, so a listener function
+    // shared by two pages would be registered in the first page's realm, which
+    // goes dead once that page unloads.
     const opts = { passive: false };
     detail.doc?.addEventListener('touchstart', () => handleTouchStart(), opts);
     detail.doc?.addEventListener('touchmove', handleTouchmove, opts);

@@ -153,8 +153,8 @@ describe('parseOpenWithFiles', () => {
     });
 
     test('degrades to intent when CLI arg parsing rejects (MINERVA-Y)', async () => {
-      // sentry-minidump relaunches the app with `--crash-reporter-server`, which
-      // the file-only CLI schema rejects. A rejected getMatches() must not leak
+      // A relaunch with `--crash-reporter-server` used to pass an option the
+      // file-only CLI schema rejects. A rejected getMatches() must not leak
       // an unhandled rejection; fall through to the intent path instead.
       mockHasCli = true;
       mockGetMatches.mockRejectedValue(

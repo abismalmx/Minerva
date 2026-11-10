@@ -33,11 +33,6 @@ Decision Audit Trail in the plan for reasoning.
       binary uploads to Minerva Cloud (`queueUpload` never consults
       `isSyncCategoryEnabled('book')` despite the category docs claiming it) —
       align behavior or docs. (S)
-- [ ] Sentry `cloudSyncProvider` tag: Sentry tagging is Rust-mediated
-      (`set_webview_info` pattern in `sentry_config.rs`); add a
-      `set_cloud_sync_provider` command + before_send tag so sync-related
-      reports carry the active provider. Console log lines ship in the
-      meantime. (S, needs src-tauri)
 
 Deferred items from the Edge TTS Web Audio plan review (/autoplan, 2026-07-04).
 Each was explicitly deferred, not forgotten — see the Decision Audit Trail in
