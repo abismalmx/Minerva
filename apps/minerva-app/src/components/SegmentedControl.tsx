@@ -22,6 +22,12 @@ interface SegmentedControlProps<T extends string | number> {
   // Stretch segments to fill the container; otherwise they hug their content.
   fullWidth?: boolean;
   className?: string;
+  /**
+   * Extra classes for the segment buttons. Callers use it when the segments
+   * sit inside a scaled surface (a dialog box) and need a touch target that
+   * survives the scale.
+   */
+  itemClassName?: string;
 }
 
 // iOS-style segmented control: a subtle track holds N equally-weighted
@@ -46,6 +52,7 @@ const SegmentedControl = <T extends string | number>({
   size = 'sm',
   fullWidth = false,
   className,
+  itemClassName,
 }: SegmentedControlProps<T>) => {
   const sizeClasses = size === 'md' ? 'px-4 py-1.5 text-sm' : 'px-3 py-1 text-sm';
 
@@ -77,6 +84,7 @@ const SegmentedControl = <T extends string | number>({
               'rounded-md font-medium transition-colors disabled:opacity-50',
               fullWidth && 'flex-1',
               sizeClasses,
+              itemClassName,
               // Picking a segment isn't a call to action, so no brand color: the
               // active one is a neutral pill raised above the track (lighter in
               // both schemes), inverted on e-ink like the Theme Mode switch.

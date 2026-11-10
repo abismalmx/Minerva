@@ -1,16 +1,32 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { PiCaretDown, PiNotePencil } from 'react-icons/pi';
-import TextEditor, { TextEditorRef } from '@/components/TextEditor';
+import type { TOCItem } from '@/libs/document';
+import { findTocItemBS } from '@/services/nav/lookup';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useNotebookDocumentStore } from '@/store/notebookDocumentStore';
+import { useBookDataStore } from '@/store/bookDataStore';
 import { BookNote } from '@/types/book';
+import type { NotebookCitationSource } from '@/app/reader/utils/notebookCitation';
+import {
+  ALL_CHAPTERS_KEY,
+  GENERAL_NOTES_KEY,
+  flattenToc,
+  getChapterContent,
+  getTocItemKey,
+  matchExcerptChapter,
+  parseChapterSections,
+  updateChapterContent,
+} from '@/app/reader/utils/notebookChapters';
 import { flushNotebookDocument } from '../../hooks/useNotebookDocumentCoordinator';
+import RichNotebookEditor, { RichNotebookEditorRef } from './RichNotebookEditor';
+import NotebookChapterSelector from './NotebookChapterSelector';
 
 interface NotebookEditorProps {
   bookKey: string;
   handleOpenAnnotations: () => void;
   excerpts: BookNote[];
   onDeleteExcerpt: (excerpt: BookNote) => void;
+  toc?: TOCItem[];
 }
 
 const NotebookEditor: React.FC<NotebookEditorProps> = ({
@@ -18,22 +34,116 @@ const NotebookEditor: React.FC<NotebookEditorProps> = ({
   handleOpenAnnotations,
   excerpts,
   onDeleteExcerpt,
+  toc = [],
 }) => {
   const _ = useTranslation();
   const bookHash = bookKey.split('-')[0]!;
   const session = useNotebookDocumentStore((state) => state.sessions[bookHash]);
   const mutate = useNotebookDocumentStore((state) => state.mutate);
-  const setSelection = useNotebookDocumentStore((state) => state.setSelection);
   const chooseRecovery = useNotebookDocumentStore((state) => state.chooseRecovery);
-  const editorRef = useRef<TextEditorRef>(null);
-  const composingRef = useRef(false);
+  const currentReadingCfi = useBookDataStore((state) => state.getConfig(bookKey)?.location);
+  const editorRef = useRef<RichNotebookEditorRef>(null);
+
+  const [selectedChapterKey, setSelectedChapterKey] = useState<string>(ALL_CHAPTERS_KEY);
+
+  const flatChapters = useMemo(() => flattenToc(toc), [toc]);
+
+  const selectedChapterTitle = useMemo(() => {
+    if (selectedChapterKey === ALL_CHAPTERS_KEY || selectedChapterKey === GENERAL_NOTES_KEY) {
+      return '';
+    }
+    return flatChapters.find((f) => f.key === selectedChapterKey)?.label || '';
+  }, [flatChapters, selectedChapterKey]);
+
+  const parsedDoc = useMemo(() => parseChapterSections(session?.content ?? ''), [session?.content]);
+
+  const hasNotesByChapter = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    if (parsedDoc.general) {
+      map[GENERAL_NOTES_KEY] = true;
+    }
+    for (const sec of parsedDoc.sections) {
+      if (sec.content.trim()) {
+        map[sec.key] = true;
+      }
+    }
+    return map;
+  }, [parsedDoc]);
+
+  const { filteredExcerpts, excerptsCountByChapter } = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const exc of excerpts) {
+      const matched = matchExcerptChapter(toc, exc.cfi);
+      const key = matched ? getTocItemKey(matched) : GENERAL_NOTES_KEY;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+
+    if (selectedChapterKey === ALL_CHAPTERS_KEY) {
+      return { filteredExcerpts: excerpts, excerptsCountByChapter: counts };
+    }
+
+    if (selectedChapterKey === GENERAL_NOTES_KEY) {
+      const filtered = excerpts.filter((exc) => !matchExcerptChapter(toc, exc.cfi));
+      return { filteredExcerpts: filtered, excerptsCountByChapter: counts };
+    }
+
+    const filtered = excerpts.filter((exc) => {
+      const matched = matchExcerptChapter(toc, exc.cfi);
+      return matched && getTocItemKey(matched) === selectedChapterKey;
+    });
+
+    return { filteredExcerpts: filtered, excerptsCountByChapter: counts };
+  }, [excerpts, selectedChapterKey, toc]);
+
+  const buildCitationLabel = (excerpt: BookNote) => {
+    const chapter = findTocItemBS(toc, excerpt.cfi)?.label;
+    const page = excerpt.page && excerpt.page > 0 ? excerpt.page : null;
+    if (chapter && page) return `${chapter} · ${_('Page {{number}}', { number: page })}`;
+    if (chapter) return chapter;
+    if (page) return _('Page {{number}}', { number: page });
+    return _('Source');
+  };
+
+  const citations = useMemo<NotebookCitationSource[]>(() => {
+    return filteredExcerpts
+      .filter((excerpt) => excerpt.cfi && excerpt.text)
+      .map((excerpt) => ({
+        id: excerpt.id,
+        label: buildCitationLabel(excerpt),
+        text: excerpt.text ?? '',
+        cfi: excerpt.cfi,
+      }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredExcerpts, toc]);
 
   if (!session) return null;
 
+  const currentEditorContent = getChapterContent(session.content, selectedChapterKey);
+
   const applyContent = (value: string) => {
-    const result = mutate(bookHash, value);
-    if (!result.accepted) editorRef.current?.setValue(session.content);
+    const updatedMaster = updateChapterContent(
+      session.content,
+      selectedChapterKey,
+      selectedChapterTitle,
+      value,
+    );
+    const result = mutate(bookHash, updatedMaster);
+    if (!result.accepted) {
+      const accepted = useNotebookDocumentStore.getState().sessions[bookHash]?.content ?? '';
+      const revertedContent = getChapterContent(accepted, selectedChapterKey);
+      editorRef.current?.setMarkdown(revertedContent);
+    }
   };
+
+  const placeholder = (() => {
+    if (selectedChapterKey === ALL_CHAPTERS_KEY) {
+      return _('Start writing about this book…');
+    }
+    if (selectedChapterKey === GENERAL_NOTES_KEY) {
+      return _('General notes about this book…');
+    }
+    return _('Write notes for {{chapter}}…', { chapter: selectedChapterTitle });
+  })();
 
   const status = (() => {
     if (session.status === 'saving') return _('Saving…');
@@ -45,6 +155,17 @@ const NotebookEditor: React.FC<NotebookEditorProps> = ({
 
   return (
     <div className='flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2'>
+      {toc.length > 0 && (
+        <NotebookChapterSelector
+          toc={toc}
+          selectedChapterKey={selectedChapterKey}
+          onSelectChapter={setSelectedChapterKey}
+          excerptsCountByChapter={excerptsCountByChapter}
+          hasNotesByChapter={hasNotesByChapter}
+          currentReadingCfi={currentReadingCfi}
+        />
+      )}
+
       {session.status === 'recovery-choice' && (
         <div className='eink-bordered bg-base-100 rounded-lg border p-3 text-sm'>
           <p>{_('Unsaved Notebook changes conflict with the latest saved version.')}</p>
@@ -66,13 +187,14 @@ const NotebookEditor: React.FC<NotebookEditorProps> = ({
           </div>
         </div>
       )}
-      {excerpts.length > 0 && (
+
+      {filteredExcerpts.length > 0 && (
         <section className='shrink-0' aria-labelledby='notebook-excerpts-heading'>
           <h2 id='notebook-excerpts-heading' className='content font-size-base mb-1'>
             {_('Excerpts')}
           </h2>
           <ul className='max-h-48 overflow-y-auto'>
-            {excerpts.map((excerpt) => (
+            {filteredExcerpts.map((excerpt) => (
               <li key={excerpt.id} className='mb-2'>
                 <details className='booknote-item eink-bordered border-base-300 bg-base-100 group rounded-lg border'>
                   <summary className='focus-visible:ring-base-content/15 flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium focus-visible:outline-hidden focus-visible:ring-2'>
@@ -101,30 +223,21 @@ const NotebookEditor: React.FC<NotebookEditorProps> = ({
           </ul>
         </section>
       )}
-      <div className='eink-bordered bg-base-100 min-h-0 flex-1 rounded-lg border p-3'>
-        <TextEditor
+
+      <div className='eink-bordered bg-base-100 flex min-h-0 flex-1 flex-col rounded-lg border'>
+        <RichNotebookEditor
           ref={editorRef}
-          value={session.content}
-          onChange={(value) => {
-            if (!composingRef.current) applyContent(value);
-          }}
+          bookKey={bookKey}
+          content={currentEditorContent}
+          citations={citations}
+          onChange={applyContent}
           onSave={() => void flushNotebookDocument(bookKey)}
           onBlur={() => void flushNotebookDocument(bookKey)}
-          onSelect={(start, end) => setSelection(bookHash, start, end)}
-          onCompositionStart={() => {
-            composingRef.current = true;
-          }}
-          onCompositionEnd={(value) => {
-            composingRef.current = false;
-            applyContent(value);
-          }}
-          placeholder={_('Start writing about this book…')}
+          placeholder={placeholder}
           ariaLabel={_('Notebook')}
-          className='h-full min-h-0 select-text overflow-y-auto text-start'
-          spellCheck
-          autoResize={false}
         />
       </div>
+
       <div className='flex min-h-8 flex-wrap items-center gap-2 text-xs'>
         <button
           type='button'

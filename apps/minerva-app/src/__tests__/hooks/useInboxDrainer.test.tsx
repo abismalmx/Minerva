@@ -16,6 +16,7 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/services/environment', () => ({
   getAPIBaseUrl: () => 'https://api.test/api',
   isTauriAppPlatform: () => true,
+  getCustomBackendUrl: () => null,
 }));
 vi.mock('@/utils/fetch', () => ({ fetchWithAuth: vi.fn() }));
 vi.mock('@/services/ingestService', () => ({ ingestFile: vi.fn() }));

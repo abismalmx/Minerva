@@ -21,6 +21,8 @@
  * All of it is implemented here so the Worker needs no runtime dependency.
  */
 
+import { argon2id } from '@noble/hashes/argon2';
+
 const encoder = new TextEncoder();
 
 /** Base64url encoding without padding, per RFC 7515. */
@@ -60,6 +62,7 @@ const sha256Bytes = async (value: string): Promise<Uint8Array> => {
  * account.
  */
 export const PASSPHRASE_KDF_ITERATIONS = 600_000;
+export const MAX_PASSPHRASE_KDF_ITERATIONS = 100_000;
 
 /**
  * The lowest cost a deployment may set.
@@ -73,8 +76,41 @@ export const MIN_PASSPHRASE_KDF_ITERATIONS = 10_000;
 /** The length of the per-account salt, in bytes. */
 const SALT_BYTES = 16;
 
-/** The marker of a stretched passphrase. */
+/** The marker of a stretched passphrase (PBKDF2). */
 export const PASSPHRASE_HASH_PREFIX = 'pbkdf2-sha256';
+
+/** The marker of a stretched passphrase (Argon2id). */
+export const ARGON2ID_HASH_PREFIX = 'argon2id';
+
+/** Default Argon2id parameters calibrated for serverless edge workers */
+export const DEFAULT_ARGON2_PARAMS = {
+  m: 4096, // 4 MB memory cost
+  t: 1, // 1 iteration
+  p: 1, // 1 lane parallelism
+};
+
+/**
+ * Stretch an account passphrase into an Argon2id hash.
+ * Format: `argon2id$<t>$<m>$<p>$<salt>$<hash>`
+ */
+export const createArgon2idHash = (
+  passphrase: string,
+  options: { m?: number; t?: number; p?: number } = {},
+): string => {
+  const m = options.m ?? DEFAULT_ARGON2_PARAMS.m;
+  const t = options.t ?? DEFAULT_ARGON2_PARAMS.t;
+  const p = options.p ?? DEFAULT_ARGON2_PARAMS.p;
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+  const hash = argon2id(passphrase, salt, { m, t, p, dkLen: 32 });
+  return [
+    ARGON2ID_HASH_PREFIX,
+    String(t),
+    String(m),
+    String(p),
+    base64urlEncode(salt),
+    base64urlEncode(hash),
+  ].join('$');
+};
 
 /** The marker of a salted KOSync account key. */
 export const KOSYNC_USERKEY_PREFIX = 'kosync-sha256';
@@ -110,11 +146,15 @@ export const createPassphraseHash = async (
   passphrase: string,
   iterations: number = PASSPHRASE_KDF_ITERATIONS,
 ): Promise<string> => {
+  const safeIterations = Math.min(
+    MAX_PASSPHRASE_KDF_ITERATIONS,
+    Math.max(MIN_PASSPHRASE_KDF_ITERATIONS, iterations),
+  );
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const hash = await pbkdf2(passphrase, salt, iterations);
+  const hash = await pbkdf2(passphrase, salt, safeIterations);
   return [
     PASSPHRASE_HASH_PREFIX,
-    String(iterations),
+    String(safeIterations),
     base64urlEncode(salt),
     base64urlEncode(hash),
   ].join('$');
@@ -139,17 +179,43 @@ export const isLegacyPassphraseHash = (stored: string): boolean => /^[0-9a-f]{64
  * the change keeps working.
  */
 export const verifyPassphrase = async (passphrase: string, stored: string): Promise<boolean> => {
-  if (isPassphraseHash(stored)) {
-    const [, iterations, salt, hash] = stored.split('$');
-    if (!iterations || !salt || !hash) return false;
-    const derived = await pbkdf2(passphrase, base64urlDecode(salt), Number(iterations));
-    return safeEqual(base64urlEncode(derived), hash);
+  try {
+    if (stored.startsWith(`${ARGON2ID_HASH_PREFIX}$`)) {
+      const parts = stored.split('$');
+      if (parts.length !== 6) return false;
+      const [, tStr, mStr, pStr, saltStr, hashStr] = parts;
+      if (!tStr || !mStr || !pStr || !saltStr || !hashStr) return false;
+      const t = Number(tStr);
+      const m = Number(mStr);
+      const p = Number(pStr);
+      if (!Number.isInteger(t) || t < 1 || t > 10) return false;
+      if (!Number.isInteger(m) || m < 8 || m > 65536) return false;
+      if (!Number.isInteger(p) || p < 1 || p > 4) return false;
+      const salt = base64urlDecode(saltStr);
+      const derived = argon2id(passphrase, salt, { m, t, p, dkLen: 32 });
+      return safeEqual(base64urlEncode(derived), hashStr);
+    }
+    if (isPassphraseHash(stored)) {
+      const parts = stored.split('$');
+      if (parts.length !== 4) return false;
+      const [, iterationsStr, salt, hash] = parts;
+      if (!iterationsStr || !salt || !hash) return false;
+      const iterations = Number(iterationsStr);
+      if (!Number.isInteger(iterations) || iterations < MIN_PASSPHRASE_KDF_ITERATIONS) return false;
+      const derived = await pbkdf2(
+        passphrase,
+        base64urlDecode(salt),
+        Math.min(MAX_PASSPHRASE_KDF_ITERATIONS, iterations),
+      );
+      return safeEqual(base64urlEncode(derived), hash);
+    }
+    if (isLegacyPassphraseHash(stored)) {
+      return safeEqual(await sha256Hex(passphrase), stored);
+    }
+    return false;
+  } catch {
+    return false;
   }
-  if (isLegacyPassphraseHash(stored)) {
-    return safeEqual(await sha256Hex(passphrase), stored);
-  }
-  // The KOSync-only sentinel, or anything else: not a passphrase digest.
-  return false;
 };
 
 /**

@@ -162,6 +162,7 @@ export const ColorPanel: React.FC<ColorPanelProps> = ({
           ))}
           <button
             onClick={() => cycleThemeMode()}
+            aria-label={_('Theme Mode')}
             className={clsx(
               'flex shrink-0 flex-col items-center justify-center rounded-lg p-3 transition-all',
               'h-[40px] min-w-[80px]',

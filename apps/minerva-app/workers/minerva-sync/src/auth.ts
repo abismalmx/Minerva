@@ -81,7 +81,7 @@ export const mintToken = async (
     sub: input.userId,
     email: input.email,
     role: 'authenticated',
-    plan: input.plan ?? 'free',
+    plan: input.plan ?? 'pro',
     storage_usage_bytes: input.storageUsageBytes ?? 0,
     storage_purchased_bytes: input.storagePurchasedBytes ?? 0,
     // A self-hosted deployment has no store to buy from; the operator already

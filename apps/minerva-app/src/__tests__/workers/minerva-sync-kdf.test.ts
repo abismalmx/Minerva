@@ -78,7 +78,7 @@ describe('H-02: la passphrase de la cuenta se guarda estirada y con sal', () => 
 
     const one = await storedRow(env, 'one@example.com');
     const two = await storedRow(env, 'two@example.com');
-    expect(one?.passhash).toMatch(/^pbkdf2-sha256\$\d+\$/);
+    expect(one?.passhash).toMatch(/^(argon2id|pbkdf2-sha256)\$/);
     // Two accounts with the SAME passphrase do not share a stored value: the
     // salt is per account, so a table of digests cannot be attacked with one
     // precomputed table.
@@ -118,7 +118,7 @@ describe('H-02: la passphrase de la cuenta se guarda estirada y con sal', () => 
     expect((await login(env, 'legacy@example.com')).status).toBe(200);
 
     const upgraded = await storedRow(env, 'legacy@example.com');
-    expect(upgraded?.passhash).toMatch(/^pbkdf2-sha256\$/);
+    expect(upgraded?.passhash).toMatch(/^(argon2id|pbkdf2-sha256)\$/);
     expect(upgraded?.passhash).not.toBe(await sha256Hex(PASSPHRASE));
     expect(String(upgraded?.userkey)).toMatch(/^kosync-sha256\$/);
   });

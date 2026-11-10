@@ -19,7 +19,9 @@ const FORM_IDS: Record<AuthView, string> = {
 };
 
 const LINK_CLASS =
-  'text-base-content/70 hover:text-base-content underline underline-offset-2 transition-colors duration-150';
+  // `min-h-8` keeps the link a tappable target even though it reads as a
+  // sentence link.
+  'text-base-content/70 hover:text-base-content inline-block min-h-8 py-1 underline underline-offset-2 transition-colors duration-150';
 
 export default function EmailPasswordAuth({
   supabaseClient,
@@ -147,15 +149,23 @@ export default function EmailPasswordAuth({
     >
       <div className='flex flex-col'>
         <label className='flex select-none items-center justify-between px-1 py-2' htmlFor='email'>
-          <span className='text-sm'>{_('Email address')}</span>
+          <span className='text-sm'>{selfHosted ? _('Username') : _('Email address')}</span>
         </label>
         <input
           id='email'
           name='email'
-          type='email'
+          type={selfHosted ? 'text' : 'email'}
           required
           defaultValue={defaultEmail}
-          placeholder={_('Your email address')}
+          placeholder={
+            selfHosted
+              ? view === 'sign_up'
+                ? _('Choose a username')
+                : _('Your username')
+              : _('Your email address')
+          }
+          autoCapitalize='none'
+          autoCorrect='off'
           autoComplete={hasPassword ? 'username' : 'email'}
           className='input eink-bordered w-full rounded-lg placeholder:text-sm'
           disabled={loading}

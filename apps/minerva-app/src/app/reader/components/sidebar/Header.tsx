@@ -38,7 +38,7 @@ const SidebarHeader: React.FC<{
         <button
           title={_('Close')}
           onClick={onClose}
-          className={'btn btn-ghost btn-circle flex h-6 min-h-6 w-6 hover:bg-transparent sm:hidden'}
+          className={'btn btn-ghost btn-circle flex h-8 min-h-8 w-8 hover:bg-transparent sm:hidden'}
         >
           <MdArrowBackIosNew size={iconSize22} />
         </button>
@@ -78,7 +78,7 @@ const SidebarHeader: React.FC<{
             title={isPinned ? _('Unpin Sidebar') : _('Pin Sidebar')}
             onClick={onTogglePin}
             className={clsx(
-              'sidebar-pin-btn btn btn-ghost btn-circle hidden h-6 min-h-6 w-6 sm:flex',
+              'sidebar-pin-btn btn btn-ghost btn-circle hidden h-8 min-h-8 w-8 sm:flex',
               isPinned ? 'bg-base-300' : 'bg-base-300/65',
             )}
           >

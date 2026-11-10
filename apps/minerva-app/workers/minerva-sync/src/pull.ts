@@ -103,11 +103,48 @@ export const handleSyncGet = async ({ request, env, userId }: AuthedRequest): Pr
 
   try {
     if (!type || type === 'books') {
+      // Auto-reconcile any files uploaded without a matching books row
+      try {
+        await db
+          .prepare(
+            `INSERT INTO books (user_id, book_hash, format, title, created_at, updated_at, uploaded_at, synced_at)
+             SELECT f.user_id, f.book_hash,
+               CASE
+                 WHEN f.file_key LIKE '%.epub' THEN 'EPUB'
+                 WHEN f.file_key LIKE '%.pdf' THEN 'PDF'
+                 WHEN f.file_key LIKE '%.mobi' THEN 'MOBI'
+                 WHEN f.file_key LIKE '%.azw3' THEN 'AZW3'
+                 ELSE 'EPUB'
+               END,
+               SUBSTR(f.file_key, INSTR(f.file_key, f.book_hash) + LENGTH(f.book_hash) + 1, INSTR(SUBSTR(f.file_key, INSTR(f.file_key, f.book_hash) + LENGTH(f.book_hash) + 1), '.') - 1),
+               f.created_at, f.updated_at, strftime('%s', f.updated_at) * 1000, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+             FROM files f
+             WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.book_hash IS NOT NULL
+               AND (f.file_key NOT LIKE '%/cover.%')
+               AND NOT EXISTS (SELECT 1 FROM books b WHERE b.user_id = f.user_id AND b.book_hash = f.book_hash)`,
+          )
+          .bind(userId)
+          .run();
+
+        await db
+          .prepare(
+            `UPDATE books SET cover_hash = (
+               SELECT f.book_hash FROM files f
+               WHERE f.user_id = books.user_id AND f.book_hash = books.book_hash AND f.file_key LIKE '%/cover.%' AND f.deleted_at IS NULL LIMIT 1
+             )
+             WHERE user_id = ? AND (cover_hash IS NULL OR cover_hash = '')`,
+          )
+          .bind(userId)
+          .run();
+      } catch (reconcileErr) {
+        console.warn('Auto-reconciliation of books from files skipped:', reconcileErr);
+      }
+
       // Books key on `synced_at` — the server-assigned cursor the Worker stamps
       // on every write, including deletes. A strict `>` on it never skips a
       // row (issue #4678).
-      const clauses = ['user_id = ?', 'synced_at > ?'];
-      const args: unknown[] = [userId, sinceIso];
+      const clauses = ['user_id = ?', "(synced_at > ? OR replace(synced_at, ' ', 'T') > ?)"];
+      const args: unknown[] = [userId, sinceIso, sinceIso];
       const filter = bookFilter(book, metaHash);
       if (filter) {
         clauses.push(filter.replace(/^ AND /, ''));

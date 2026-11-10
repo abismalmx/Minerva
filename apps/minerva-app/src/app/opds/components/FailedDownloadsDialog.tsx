@@ -100,7 +100,7 @@ export function FailedDownloadsDialog({ catalogId, catalogName, onClose }: Props
             <button
               type='button'
               onClick={onClose}
-              className='btn btn-ghost btn-sm btn-circle'
+              className='btn btn-ghost btn-circle h-9 min-h-9 w-9'
               aria-label={_('Close')}
             >
               <IoClose className='h-4 w-4' />

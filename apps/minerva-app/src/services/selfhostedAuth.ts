@@ -22,6 +22,11 @@ import {
   type SelfHostedSession,
   type SelfHostedUser,
 } from '@/services/selfhostedBackend';
+import {
+  loadPersistedSession,
+  savePersistedSession,
+  clearPersistedSession,
+} from '@/services/sessionPersistence';
 
 export type AuthStateChangeEvent =
   | 'SIGNED_IN'
@@ -107,6 +112,11 @@ class SelfHostedAuth {
     try {
       const session = await selfHostedLogin(email, password);
       this.currentSession = session;
+      await savePersistedSession({
+        token: session.access_token,
+        refresh_token: session.refresh_token,
+        user: session.user,
+      });
       this.emit('SIGNED_IN', session);
       return ok(session);
     } catch (error) {
@@ -119,6 +129,11 @@ class SelfHostedAuth {
     try {
       const session = await selfHostedRegister(email, password);
       this.currentSession = session;
+      await savePersistedSession({
+        token: session.access_token,
+        refresh_token: session.refresh_token,
+        user: session.user,
+      });
       this.emit('SIGNED_IN', session);
       return ok(session);
     } catch (error) {
@@ -131,11 +146,24 @@ class SelfHostedAuth {
     data: { session: SelfHostedSession | null };
     error: AuthError | null;
   }> {
+    if (!this.currentSession) {
+      const persisted = await loadPersistedSession();
+      if (persisted && persisted.token && persisted.user) {
+        this.currentSession = {
+          access_token: persisted.token,
+          refresh_token: persisted.refresh_token || persisted.token,
+          user: persisted.user as SelfHostedUser,
+        };
+      }
+    }
     return { data: { session: this.currentSession }, error: null };
   }
 
   /** The signed-in user, verified against the server when a token is held. */
   async getUser(): Promise<{ data: { user: SelfHostedUser | null }; error: AuthError | null }> {
+    if (!this.currentSession) {
+      await this.getSession();
+    }
     const session = this.currentSession;
     if (!session) return { data: { user: null }, error: null };
     try {
@@ -188,6 +216,11 @@ class SelfHostedAuth {
         user,
       };
       this.currentSession = session;
+      await savePersistedSession({
+        token: access_token,
+        refresh_token: session.refresh_token,
+        user,
+      });
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('token', access_token);
         window.localStorage.setItem('refresh_token', refresh_token || access_token);
@@ -305,6 +338,7 @@ class SelfHostedAuth {
   /** Sign out and forget the stored session. */
   async signOut(): Promise<{ error: AuthError | null }> {
     this.currentSession = null;
+    await clearPersistedSession().catch(() => {});
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('token');
       window.localStorage.removeItem('refresh_token');
@@ -325,16 +359,24 @@ class SelfHostedAuth {
     data: { session: SelfHostedSession | null };
     error: AuthError | null;
   }> {
+    if (!this.currentSession) {
+      await this.getSession();
+    }
     const session = this.currentSession;
     if (!session) return { data: { session: null }, error: null };
     try {
       const user = await selfHostedMe(session.access_token);
       const refreshed: SelfHostedSession = { ...session, user };
       this.currentSession = refreshed;
+      await savePersistedSession({
+        token: refreshed.access_token,
+        refresh_token: refreshed.refresh_token,
+        user: refreshed.user,
+      });
       return { data: { session: refreshed }, error: null };
     } catch {
-      this.currentSession = null;
-      return { data: { session: null }, error: { message: 'Session expired' } };
+      // Do not clear the session on network errors (e.g. offline start).
+      return { data: { session }, error: { message: 'Session check failed' } };
     }
   }
 

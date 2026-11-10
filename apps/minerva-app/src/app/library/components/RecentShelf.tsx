@@ -98,6 +98,9 @@ const RecentSlide: React.FC<RecentSlideProps> = ({
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // A control nested in the slide handles its own keys (§ same rule as the
+    // grid tile): the slide must not swallow Enter from a button inside it.
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea')) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleActivate();

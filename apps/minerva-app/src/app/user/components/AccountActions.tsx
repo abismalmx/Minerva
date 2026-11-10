@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
+import { isSelfHosted } from '@/utils/access';
 import { UserPlan } from '@/types/quota';
 
 interface DeleteConfirmationModalProps {
@@ -120,6 +121,7 @@ const AccountActions: React.FC<AccountActionsProps> = ({
             {_('Restore Purchase')}
           </button>
         ) : (
+          !isSelfHosted() &&
           userPlan !== 'free' && (
             <button
               onClick={onManageSubscription}

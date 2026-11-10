@@ -71,7 +71,8 @@ export default function MinervaCloudOptIn({ onPendingWrite }: MinervaCloudOptInP
           type='checkbox'
           checked={checked}
           onChange={(event) => handleChange(event.target.checked)}
-          className='checkbox checkbox-sm mt-0.5 shrink-0'
+          // `checkbox-xl` is the 2rem box: a checkbox you can actually tap.
+          className='checkbox checkbox-xl mt-0.5 shrink-0'
         />
         <span className='flex flex-col gap-1'>
           <span className='text-sm'>{_('Sync with Minerva Cloud')}</span>

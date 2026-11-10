@@ -231,6 +231,17 @@ const Dialog: React.FC<DialogProps> = ({
         releaseBackKeyInterception();
         eventDispatcher.offSync('native-key-down', handleKeyDown);
       }
+      // A dialog that is unmounted rather than closed (the library unmounts
+      // the book details panel) never reaches the `!isOpen` branch above, and
+      // the focus would be dropped on the floor with it. Restore it here too —
+      // but only while the focus is still inside the dialog, so a click that
+      // landed elsewhere keeps its own focus.
+      const active = document.activeElement;
+      const focusIsStillOurs =
+        !active || active === document.body || (dialogRef.current?.contains(active) ?? false);
+      if (focusIsStillOurs && previousActiveElementRef.current?.isConnected) {
+        previousActiveElementRef.current.focus();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -462,7 +473,7 @@ const Dialog: React.FC<DialogProps> = ({
                 onClick={onClose}
                 disabled={!dismissible}
                 className={clsx(
-                  'btn btn-ghost btn-circle h-8 min-h-8 w-8 hover:bg-transparent focus:outline-hidden disabled:bg-transparent sm:hidden',
+                  'btn btn-ghost btn-circle h-9 min-h-9 w-9 hover:bg-transparent focus:outline-hidden disabled:bg-transparent sm:hidden',
                   isFullHeightSheet ? 'flex' : 'hidden',
                 )}
               >
@@ -483,7 +494,9 @@ const Dialog: React.FC<DialogProps> = ({
                 onClick={onClose}
                 disabled={!dismissible}
                 className={
-                  'bg-base-300/65 btn btn-ghost btn-circle ml-auto hidden h-6 min-h-6 w-6 focus:outline-hidden sm:flex'
+                  // A 2.25rem box: the close affordance has to be tappable, not
+                  // just visible.
+                  'bg-base-300/65 btn btn-ghost btn-circle ml-auto hidden h-9 min-h-9 w-9 focus:outline-hidden sm:flex'
                 }
               >
                 <svg

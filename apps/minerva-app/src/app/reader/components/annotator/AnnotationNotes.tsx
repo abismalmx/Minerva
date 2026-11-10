@@ -27,7 +27,13 @@ const AnnotationNotes: React.FC<AnnotationNotesProps> = ({
   popupHeight,
   onDismiss,
 }) => {
-  const maxSize = useResponsiveSize(250);
+  const hasImage = useMemo(
+    () => notes.some((n) => n.note && (n.note.includes('![') || n.note.includes('<img'))),
+    [notes],
+  );
+  const imagePopupWidth = useResponsiveSize(320);
+  const effectiveWidth = hasImage ? Math.max(popupWidth, imagePopupWidth) : popupWidth;
+  const maxSize = useResponsiveSize(hasImage ? 420 : 250);
 
   const sortedNotes = useMemo(() => {
     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -48,7 +54,7 @@ const AnnotationNotes: React.FC<AnnotationNotesProps> = ({
           : {
               top: triangleDir === 'down' ? `${toolsVisible ? popupHeight + 16 : 0}px` : undefined,
               bottom: triangleDir === 'up' ? `${toolsVisible ? popupHeight + 16 : 0}px` : undefined,
-              width: `${popupWidth}px`,
+              width: `${effectiveWidth}px`,
               maxHeight: `${maxSize}px`,
               overflowY: 'auto',
             }),

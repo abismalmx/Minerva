@@ -29,6 +29,7 @@ import { isCJKEnv } from '@/utils/misc';
 import {
   BoxedList,
   NavigationRow,
+  PanelHeader,
   SettingsRow,
   SettingsSelect,
   SettingsSwitchRow,
@@ -439,6 +440,10 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
 
   return (
     <div className={clsx('my-4 w-full space-y-6')}>
+      <PanelHeader
+        title={_('Language')}
+        description={_('Set the language of the interface and the translation of what you read.')}
+      />
       <BoxedList title={_('Language')} data-setting-id='settings.language.interfaceLanguage'>
         <SettingsRow label={_('Language')}>
           <SettingsSelect

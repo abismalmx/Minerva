@@ -25,6 +25,7 @@ import { splitDuration } from '@/utils/time';
 import { INDETERMINATE_PROGRESS } from '@/utils/transfer';
 import { getBookTags } from '../utils/libraryUtils';
 import ReadingProgress from './ReadingProgress';
+import { BookSpine } from './BookSpine';
 import BookCover from '@/components/BookCover';
 
 interface BookItemProps {
@@ -124,11 +125,19 @@ const BookItem: React.FC<BookItemProps> = ({
   // instead of the duration/remaining-time label audiobooks get.
   const episodeCountLabel = _('{{count}} episodes', { count: book.episodeCount ?? 0 });
 
+  // Whether the tile has anything to say under the title: a reading state, a
+  // progress, or — in the grid — the length of the book, printed as a folio.
+  const hasState = !!(
+    book.progress ||
+    book.readingStatus ||
+    (mode === 'grid' && (book.pageCount || book.progress))
+  );
+
   return (
     <div
       role='none'
       className={clsx(
-        'book-item flex',
+        'book-item flex minerva-spine-host',
         mode === 'grid' && 'h-full flex-col justify-end',
         mode === 'list' && 'min-h-28 flex-row gap-4 overflow-hidden',
         mode === 'list' ? 'library-list-item' : 'library-grid-item',
@@ -140,7 +149,7 @@ const BookItem: React.FC<BookItemProps> = ({
         className={clsx(
           'bookitem-main relative flex justify-center overflow-hidden rounded-sm',
           !fitCoverInGrid && 'aspect-28/41',
-          coverFit === 'crop' && 'shadow-md',
+          coverFit === 'crop' && 'minerva-cover',
           mode === 'grid' && 'items-end',
           mode === 'list' && 'min-w-20 items-center',
         )}
@@ -151,9 +160,13 @@ const BookItem: React.FC<BookItemProps> = ({
           book={book}
           coverFit={coverFit}
           showSpine={showSpine}
-          imageClassName={clsx('shadow-md', showSpine ? 'rounded-none' : 'rounded-sm')}
+          imageClassName={clsx('minerva-cover', showSpine ? 'rounded-none' : 'rounded-sm')}
           onAspectRatioChange={setCoverAspect}
         />
+        {/* El lomo: the reading progress along the book's own binding. The
+            skeuomorphic cover already draws a spine on that edge, so the two
+            never stack. */}
+        {!showSpine && <BookSpine book={book} />}
         {isTransferring && (
           // E-ink cannot render a translucent wash — it dithers over the cover
           // art — and has no shadows, so the scrim becomes a solid base-100
@@ -205,7 +218,10 @@ const BookItem: React.FC<BookItemProps> = ({
             title={book.title}
             className={clsx(
               'overflow-hidden text-ellipsis font-semibold',
-              mode === 'grid' && 'block whitespace-nowrap text-xs',
+              mode === 'grid' &&
+                // The title is the focal element of the tile: it warms on hover
+                // instead of the whole cell changing colour (§2.4).
+                'block whitespace-nowrap text-xs text-base-content/80 transition-colors duration-150 group-hover:text-base-content',
               mode === 'list' && 'line-clamp-1 text-base',
             )}
           >
@@ -228,7 +244,7 @@ const BookItem: React.FC<BookItemProps> = ({
         <div
           className={clsx(
             'flex items-center',
-            book.progress || book.readingStatus || isAbsBook ? 'justify-between' : 'justify-end',
+            hasState || isAbsBook ? 'justify-between' : 'justify-end',
           )}
           style={{
             height: `${iconSize15}px`,
@@ -245,8 +261,12 @@ const BookItem: React.FC<BookItemProps> = ({
               </span>
             </div>
           ) : (
-            (book.progress || book.readingStatus) && (
-              <ReadingProgress book={book} showTimeRemaining={showTimeRemaining} />
+            hasState && (
+              <ReadingProgress
+                book={book}
+                showTimeRemaining={showTimeRemaining}
+                variant={mode === 'grid' ? 'folio' : 'percent'}
+              />
             )
           )}
           {mode === 'list' && tags.length > 0 && (
@@ -279,7 +299,7 @@ const BookItem: React.FC<BookItemProps> = ({
             {!appService?.isMobile && (
               <button
                 aria-label={_('Show Book Details')}
-                className='show-detail-button -m-2 p-2 sm:opacity-0 sm:group-hover:opacity-100'
+                className='show-detail-button -m-2 flex h-8 w-8 items-center justify-center p-2 sm:opacity-0 sm:group-hover:opacity-100'
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => {
                   showBookDetailsModal(book);
@@ -323,7 +343,7 @@ const BookItem: React.FC<BookItemProps> = ({
                 (!book.uploadedAt || (book.uploadedAt && !book.downloadedAt)) && (
                   <button
                     aria-label={!book.uploadedAt ? _('Upload Book') : _('Download Book')}
-                    className='show-cloud-button -m-2 p-2'
+                    className='show-cloud-button -m-2 flex h-8 w-8 items-center justify-center p-2'
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => {
                       if (!user) {

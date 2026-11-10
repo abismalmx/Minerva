@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NotebookEditor from '@/app/reader/components/notebook/NotebookEditor';
+import { DropdownProvider } from '@/context/DropdownContext';
 import { useNotebookDocumentStore } from '@/store/notebookDocumentStore';
 import { BookNote } from '@/types/book';
 
@@ -16,6 +17,23 @@ const defaultProps = {
 vi.mock('@/app/reader/hooks/useNotebookDocumentCoordinator', () => ({
   flushNotebookDocument: (bookKey: string) => flushNotebookDocument(bookKey),
 }));
+vi.mock('@/hooks/useTranslation', () => ({
+  useTranslation: () => (key: string) => key,
+}));
+vi.mock('@/context/EnvContext', () => ({ useEnv: () => ({ appService: null }) }));
+
+const flush = async () => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
+const renderEditor = () =>
+  render(
+    <DropdownProvider>
+      <NotebookEditor {...defaultProps} />
+    </DropdownProvider>,
+  );
 
 describe('NotebookEditor', () => {
   beforeEach(() => {
@@ -26,48 +44,50 @@ describe('NotebookEditor', () => {
 
   afterEach(cleanup);
 
-  it('renders a selectable, spellchecked raw Markdown editor as the blank state', () => {
-    render(<NotebookEditor {...defaultProps} />);
+  it('renders a rich editor as the blank state', async () => {
+    renderEditor();
+    await flush();
 
     const editor = screen.getByRole('textbox', { name: 'Notebook' });
-    expect(editor.getAttribute('placeholder')).toBe('Start writing about this book…');
+    expect(editor.getAttribute('contenteditable')).toBe('true');
     expect(editor.getAttribute('dir')).toBe('auto');
     expect(editor.getAttribute('spellcheck')).toBe('true');
-    expect(editor.classList.contains('select-text')).toBe(true);
+    expect(editor.classList.contains('notebook-editor-content')).toBe(true);
     expect(screen.queryByText('No Notes')).toBeNull();
   });
 
-  it('updates the isolated document session while typing', () => {
-    render(<NotebookEditor {...defaultProps} />);
+  it('updates the isolated document session while typing', async () => {
+    renderEditor();
+    await flush();
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notebook' }), {
-      target: { value: '# Reading notes' },
-    });
+    const editor = screen.getByRole('textbox', { name: 'Notebook' });
+    editor.textContent = 'Reading notes';
+    await flush();
 
     expect(useNotebookDocumentStore.getState().sessions['book']).toMatchObject({
-      content: '# Reading notes',
+      content: 'Reading notes',
       status: 'dirty',
       revision: 1,
     });
   });
 
-  it('waits until compositionend before validating IME input', () => {
-    render(<NotebookEditor {...defaultProps} />);
+  it('stores the typed text as Markdown', async () => {
+    renderEditor();
+    await flush();
+
     const editor = screen.getByRole('textbox', { name: 'Notebook' });
+    editor.textContent = '**Reading notes**';
+    await flush();
 
-    fireEvent.compositionStart(editor);
-    fireEvent.change(editor, { target: { value: '你' } });
-    expect(useNotebookDocumentStore.getState().sessions['book']?.content).toBe('');
-
-    fireEvent.compositionEnd(editor, { currentTarget: { value: '你' } });
-    expect(useNotebookDocumentStore.getState().sessions['book']?.content).toBe('你');
+    expect(useNotebookDocumentStore.getState().sessions['book']?.content).toBe('**Reading notes**');
   });
 
-  it('flushes on the save shortcut and blur', () => {
-    render(<NotebookEditor {...defaultProps} />);
-    const editor = screen.getByRole('textbox', { name: 'Notebook' });
+  it('flushes on the save shortcut and blur', async () => {
+    renderEditor();
+    await flush();
 
-    fireEvent.keyDown(editor, { key: 'Enter', metaKey: true });
+    const editor = screen.getByRole('textbox', { name: 'Notebook' });
+    fireEvent.keyDown(editor, { key: 'Enter', ctrlKey: true });
     fireEvent.blur(editor);
 
     expect(flushNotebookDocument).toHaveBeenCalledTimes(2);
@@ -75,7 +95,7 @@ describe('NotebookEditor', () => {
   });
 
   it('shows local durability status in a polite live region', () => {
-    render(<NotebookEditor {...defaultProps} />);
+    renderEditor();
 
     act(() => {
       useNotebookDocumentStore.getState().mutate('book', 'draft');
@@ -89,19 +109,35 @@ describe('NotebookEditor', () => {
     expect(screen.getByRole('status').textContent).toBe('Saved');
   });
 
-  it('offers both recovery choices without overwriting either copy', () => {
+  it('offers both recovery choices without overwriting either copy', async () => {
     useNotebookDocumentStore.getState().reset();
     useNotebookDocumentStore.getState().hydrate('book', 'latest saved', 200, 'local draft');
-    render(<NotebookEditor {...defaultProps} />);
+    renderEditor();
+    await flush();
 
-    expect((screen.getByRole('textbox', { name: 'Notebook' }) as HTMLTextAreaElement).value).toBe(
-      'latest saved',
-    );
+    expect(screen.getByRole('textbox', { name: 'Notebook' }).textContent).toBe('latest saved');
     fireEvent.click(screen.getByRole('button', { name: 'Recover draft' }));
 
     expect(useNotebookDocumentStore.getState().sessions['book']).toMatchObject({
       content: 'local draft',
       status: 'dirty',
+    });
+  });
+
+  it('rolls the editor back when the store refuses an oversize document', async () => {
+    const huge = 'x'.repeat(300_000);
+    useNotebookDocumentStore.getState().reset();
+    useNotebookDocumentStore.getState().hydrate('book', huge, null);
+    renderEditor();
+    await flush();
+
+    const editor = screen.getByRole('textbox', { name: 'Notebook' });
+    editor.textContent = `${huge}more`;
+    await flush();
+
+    expect(useNotebookDocumentStore.getState().sessions['book']).toMatchObject({
+      content: huge,
+      error: 'size-limit',
     });
   });
 
@@ -118,12 +154,9 @@ describe('NotebookEditor', () => {
     const onDeleteExcerpt = vi.fn();
 
     render(
-      <NotebookEditor
-        bookKey='book-view'
-        handleOpenAnnotations={handleOpenAnnotations}
-        excerpts={[excerpt]}
-        onDeleteExcerpt={onDeleteExcerpt}
-      />,
+      <DropdownProvider>
+        <NotebookEditor {...defaultProps} excerpts={[excerpt]} onDeleteExcerpt={onDeleteExcerpt} />
+      </DropdownProvider>,
     );
 
     expect(screen.getByText('Excerpts')).toBeTruthy();

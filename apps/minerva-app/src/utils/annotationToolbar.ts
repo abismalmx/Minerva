@@ -16,6 +16,7 @@ export const ALL_ANNOTATION_TOOL_TYPES: AnnotationToolType[] = [
   'copylink',
   'highlight',
   'annotate',
+  'image',
   'search',
   'dictionary',
   'translate',
@@ -26,13 +27,22 @@ export const ALL_ANNOTATION_TOOL_TYPES: AnnotationToolType[] = [
   'quotecard',
 ];
 
-// Default toolbar: the eight pre-existing tools in their original order.
-// 'share' starts hidden in the Available tray per the #4014 design, and
-// 'copylink' is opt-in the same way (#5452) — a niche action most readers
-// never need, reachable by adding it in Customize Toolbar. 'gemini' is
-// opt-in too: it needs an API key the reader has not necessarily set up
-// yet, so it must not take a slot in the default bar.
+// Default toolbar: tools shown on selection in canonical order.
 export const DEFAULT_ANNOTATION_TOOLBAR_ITEMS: AnnotationToolType[] = [
+  'copy',
+  'highlight',
+  'annotate',
+  'image',
+  'search',
+  'dictionary',
+  'translate',
+  'gemini',
+  'tts',
+  'proofread',
+];
+
+// Legacy defaults before image or gemini was added to the default bar.
+const LEGACY_DEFAULT_TOOLBAR_ITEMS_8: AnnotationToolType[] = [
   'copy',
   'highlight',
   'annotate',
@@ -43,10 +53,28 @@ export const DEFAULT_ANNOTATION_TOOLBAR_ITEMS: AnnotationToolType[] = [
   'proofread',
 ];
 
+const LEGACY_DEFAULT_TOOLBAR_ITEMS_9: AnnotationToolType[] = [
+  'copy',
+  'highlight',
+  'annotate',
+  'search',
+  'dictionary',
+  'translate',
+  'gemini',
+  'tts',
+  'proofread',
+];
+
+const isLegacyDefault = (items: AnnotationToolType[]): boolean =>
+  (items.length === LEGACY_DEFAULT_TOOLBAR_ITEMS_8.length &&
+    items.every((tool, i) => tool === LEGACY_DEFAULT_TOOLBAR_ITEMS_8[i])) ||
+  (items.length === LEGACY_DEFAULT_TOOLBAR_ITEMS_9.length &&
+    items.every((tool, i) => tool === LEGACY_DEFAULT_TOOLBAR_ITEMS_9[i]));
+
 // Drop unknown/duplicate entries; fall back to the default when unset (a
-// pre-existing per-book config may not carry the field yet).
+// pre-existing per-book config may not carry the field yet), or upgrade legacy defaults.
 const sanitize = (items: AnnotationToolType[] | undefined): AnnotationToolType[] => {
-  const source = items ?? DEFAULT_ANNOTATION_TOOLBAR_ITEMS;
+  const source = !items || isLegacyDefault(items) ? DEFAULT_ANNOTATION_TOOLBAR_ITEMS : items;
   const seen = new Set<AnnotationToolType>();
   const out: AnnotationToolType[] = [];
   for (const type of source) {

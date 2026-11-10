@@ -62,6 +62,47 @@ if (typeof HTMLMediaElement !== 'undefined') {
   HTMLMediaElement.prototype.load = () => {};
 }
 
+// jsdom implements layout-less `getClientRects` only on elements. ProseMirror
+// asks text nodes and ranges for their rects when it scrolls the selection into view, so
+// the text node and range variants are stubbed with an empty list.
+const emptyDOMRect = () => ({
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  width: 0,
+  height: 0,
+  x: 0,
+  y: 0,
+  toJSON: () => {},
+});
+if (typeof Node !== 'undefined') {
+  if (!Node.prototype.getClientRects) {
+    const emptyRects = () =>
+      Object.assign([], {
+        item: () => null,
+        [Symbol.iterator]: function* () {},
+      });
+    Node.prototype.getClientRects = emptyRects;
+  }
+  if (!(Node.prototype as unknown as { getBoundingClientRect?: unknown }).getBoundingClientRect) {
+    (Node.prototype as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect =
+      emptyDOMRect as unknown as () => DOMRect;
+  }
+}
+if (typeof Range !== 'undefined') {
+  if (!Range.prototype.getClientRects) {
+    Range.prototype.getClientRects = () =>
+      Object.assign([], {
+        item: () => null,
+        [Symbol.iterator]: function* () {},
+      });
+  }
+  if (!Range.prototype.getBoundingClientRect) {
+    Range.prototype.getBoundingClientRect = emptyDOMRect as unknown as () => DOMRect;
+  }
+}
+
 // Unit tests never reach the Minerva Voice API: a controller built for a
 // signed-out reader would otherwise fetch the voice catalog over the network.
 // Tests that exercise the request spy on fetch themselves.

@@ -140,7 +140,7 @@ const TransferItemRow: React.FC<{
         {isFailedLikeTransfer(transfer) && (
           <button
             onClick={() => onRetry(transfer.id)}
-            className='btn btn-ghost btn-sm btn-circle'
+            className='btn btn-ghost btn-circle h-9 min-h-9 w-9'
             aria-label={_('Retry')}
           >
             <MdRefresh size={iconSize} />

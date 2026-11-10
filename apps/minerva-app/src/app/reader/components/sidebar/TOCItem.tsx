@@ -160,7 +160,7 @@ const TOCItemView = React.memo<{
       {(item.location || item.index !== undefined) && (
         <div
           aria-hidden='true'
-          className='text-base-content/50 ms-auto shrink-0 ps-1 text-xs sm:pe-1'
+          className='text-base-content/50 minerva-folio ms-auto shrink-0 ps-1 text-xs sm:pe-1'
         >
           {item.location ? item.location.current + 1 : item.index + 1}
         </div>
@@ -243,7 +243,9 @@ export const CurrentPositionRow: React.FC<{
         onKeyDown={onClick ? (e) => e.key === 'Enter' && handleClick(e) : undefined}
         className={clsx(
           'flex w-full items-center rounded-md py-4 sm:py-2',
-          'text-bold-in-eink sm:bg-base-300/65 sm:text-base-content text-blue-500',
+          // The current position is the one accent in the tree: it wears the
+          // brand colour instead of a stray blue.
+          'text-bold-in-eink sm:bg-base-300/65 sm:text-base-content text-primary',
           onClick && 'cursor-pointer sm:hover:bg-base-300/75',
         )}
         style={{ paddingInlineStart: `${depth * 12 + 8}px` }}
@@ -255,7 +257,10 @@ export const CurrentPositionRow: React.FC<{
         >
           {label}
         </div>
-        <div aria-hidden='true' className='text-base-content/50 ms-auto ps-1 text-xs sm:pe-1'>
+        <div
+          aria-hidden='true'
+          className='text-base-content/50 minerva-folio ms-auto ps-1 text-xs sm:pe-1'
+        >
           {page}
         </div>
       </div>

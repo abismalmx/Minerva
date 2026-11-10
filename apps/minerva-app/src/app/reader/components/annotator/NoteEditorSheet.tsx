@@ -8,6 +8,7 @@ import AnnotationNoteEditor from './AnnotationNoteEditor';
 
 interface NoteEditorSheetProps {
   value: string;
+  selectionText?: string;
   onSave: (note: string) => void;
   onCancel: () => void;
 }
@@ -18,7 +19,12 @@ interface NoteEditorSheetProps {
  * selection the keyboard would cover. Mirrors DictionarySheet, which makes the
  * same call for the same reason.
  */
-const NoteEditorSheet: React.FC<NoteEditorSheetProps> = ({ value, onSave, onCancel }) => {
+const NoteEditorSheet: React.FC<NoteEditorSheetProps> = ({
+  value,
+  selectionText,
+  onSave,
+  onCancel,
+}) => {
   const _ = useTranslation();
   return (
     <Dialog
@@ -36,7 +42,13 @@ const NoteEditorSheet: React.FC<NoteEditorSheetProps> = ({ value, onSave, onCanc
       contentClassName='px-0! mt-0! flex-1 min-h-0'
       onClose={onCancel}
     >
-      <AnnotationNoteEditor className='h-full' value={value} onSave={onSave} onCancel={onCancel} />
+      <AnnotationNoteEditor
+        className='h-full'
+        value={value}
+        selectionText={selectionText}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
     </Dialog>
   );
 };

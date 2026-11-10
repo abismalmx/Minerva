@@ -39,6 +39,11 @@ export interface R2Bucket {
     options?: R2PutOptions,
   ): Promise<unknown>;
   delete(key: string): Promise<void>;
+  list?(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
+    objects: Array<{ key: string; size: number }>;
+    truncated?: boolean;
+    cursor?: string;
+  }>;
 }
 
 /** The result of a D1 query. */

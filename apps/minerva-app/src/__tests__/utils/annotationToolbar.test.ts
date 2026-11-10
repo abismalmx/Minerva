@@ -17,14 +17,16 @@ describe('annotationToolbar helpers', () => {
     expect(ALL_ANNOTATION_TOOL_TYPES).toEqual(annotationToolButtons.map((b) => b.type));
   });
 
-  test('default toolbar is the eight non-share tools in canonical order', () => {
+  test('default toolbar is the ten non-share tools in canonical order', () => {
     expect(DEFAULT_ANNOTATION_TOOLBAR_ITEMS).toEqual([
       'copy',
       'highlight',
       'annotate',
+      'image',
       'search',
       'dictionary',
       'translate',
+      'gemini',
       'tts',
       'proofread',
     ]);
@@ -60,6 +62,7 @@ describe('annotationToolbar helpers', () => {
       'copylink',
       'highlight',
       'annotate',
+      'image',
       'search',
       'dictionary',
       'translate',
@@ -71,14 +74,45 @@ describe('annotationToolbar helpers', () => {
     ]);
   });
 
-  test('gemini is opt-in and offered in the available tray', () => {
+  test('image ships on the default toolbar', () => {
+    expect(ALL_ANNOTATION_TOOL_TYPES).toContain('image');
+    expect(DEFAULT_ANNOTATION_TOOLBAR_ITEMS).toContain('image');
+    expect(getToolbarToolTypes(undefined, true)).toContain('image');
+    expect(getAvailableToolTypes(['copy'], true)).toContain('image');
+  });
+
+  test('gemini ships on the default toolbar', () => {
     expect(ALL_ANNOTATION_TOOL_TYPES).toContain('gemini');
-    expect(DEFAULT_ANNOTATION_TOOLBAR_ITEMS).not.toContain('gemini');
-    expect(getToolbarToolTypes(undefined, true)).not.toContain('gemini');
-    expect(getAvailableToolTypes(DEFAULT_ANNOTATION_TOOLBAR_ITEMS, true)).toContain('gemini');
-    expect(getToolbarToolTypes([...DEFAULT_ANNOTATION_TOOLBAR_ITEMS, 'gemini'], true)).toContain(
+    expect(DEFAULT_ANNOTATION_TOOLBAR_ITEMS).toContain('gemini');
+    expect(getToolbarToolTypes(undefined, true)).toContain('gemini');
+    expect(getAvailableToolTypes(['copy'], true)).toContain('gemini');
+  });
+
+  test('legacy defaults upgrade automatically to include image and gemini', () => {
+    const legacy8 = [
+      'copy',
+      'highlight',
+      'annotate',
+      'search',
+      'dictionary',
+      'translate',
+      'tts',
+      'proofread',
+    ];
+    expect(getToolbarToolTypes(legacy8 as never, true)).toEqual(DEFAULT_ANNOTATION_TOOLBAR_ITEMS);
+
+    const legacy9 = [
+      'copy',
+      'highlight',
+      'annotate',
+      'search',
+      'dictionary',
+      'translate',
       'gemini',
-    );
+      'tts',
+      'proofread',
+    ];
+    expect(getToolbarToolTypes(legacy9 as never, true)).toEqual(DEFAULT_ANNOTATION_TOOLBAR_ITEMS);
   });
 
   test('quotecard is opt-in and offered even when text share is unavailable', () => {

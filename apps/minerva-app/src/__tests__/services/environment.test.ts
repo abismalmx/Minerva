@@ -271,6 +271,15 @@ describe('environment', () => {
       const { getAPIBaseUrl } = await import('@/services/environment');
       expect(getAPIBaseUrl()).toBe('https://web.minerva.invalid/api');
     });
+
+    test('returns self-hosted URL in web development mode when NEXT_PUBLIC_SELF_HOSTED_BACKEND is true', async () => {
+      env['NODE_ENV'] = 'development';
+      env['NEXT_PUBLIC_APP_PLATFORM'] = 'web';
+      env['NEXT_PUBLIC_SELF_HOSTED_BACKEND'] = 'true';
+      env['NEXT_PUBLIC_API_BASE_URL'] = 'https://minerva-cloudflare.example.workers.dev';
+      const { getAPIBaseUrl } = await import('@/services/environment');
+      expect(getAPIBaseUrl()).toBe('https://minerva-cloudflare.example.workers.dev/api');
+    });
   });
 
   // ── getMinervaVoiceAPIBaseUrl ──────────────────────────────────

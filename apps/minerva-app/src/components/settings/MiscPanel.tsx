@@ -10,7 +10,7 @@ import { SettingsPanelPanelProp } from './SettingsDialog';
 import { saveViewSettings } from '@/helpers/settings';
 import { validateCSS, formatCSS } from '@/utils/css';
 import { getStyles } from '@/utils/style';
-import { BoxedList } from './primitives';
+import { BoxedList, PanelHeader } from './primitives';
 
 type CSSType = 'book' | 'reader';
 
@@ -194,6 +194,10 @@ const MiscPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
         inputFocusInAndroid && 'h-[50%] overflow-y-auto pb-[200px]',
       )}
     >
+      <PanelHeader
+        title={_('Custom')}
+        description={_('Tune the details of the reader: fonts, images and everything else.')}
+      />
       {renderCSSEditor(
         'book',
         _('Custom Content CSS'),

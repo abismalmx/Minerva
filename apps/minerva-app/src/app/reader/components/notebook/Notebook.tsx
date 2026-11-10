@@ -273,6 +273,7 @@ const Notebook: React.FC = () => {
             handleOpenAnnotations={handleOpenAnnotations}
             excerpts={excerptNotes}
             onDeleteExcerpt={handleDeleteExcerpt}
+            toc={bookData.bookDoc.toc || []}
           />
         )}
         <div

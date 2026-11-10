@@ -35,7 +35,7 @@ import { PREDEFINED_TEXTURES } from '@/styles/textures';
 import { useAtmosphereStore } from '@/store/atmosphereStore';
 import { DefaultHighlightColor, HighlightColor, UserHighlightColor } from '@/types/book';
 import clsx from 'clsx';
-import { ScopeSwitch, SectionTitle, SettingLabel } from './primitives';
+import { PanelHeader, ScopeSwitch, SectionTitle, SettingLabel } from './primitives';
 import { HIGHLIGHT_COLOR_HEX } from '@/services/constants';
 import ThemeEditor from './theme/ThemeEditor';
 import ThemeModeSelector from './theme/ThemeModeSelector';
@@ -527,6 +527,10 @@ const ThemePanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset
         />
       ) : (
         <>
+          <PanelHeader
+            title={_('Theme')}
+            description={_('Pick the palette, background and textures of your reading surface.')}
+          />
           <div className='space-y-6'>
             <div className='mb-2 flex items-center justify-between gap-2'>
               <SectionTitle>{_('Theme')}</SectionTitle>

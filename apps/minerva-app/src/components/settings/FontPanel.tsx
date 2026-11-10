@@ -28,7 +28,7 @@ import { useResetViewSettings } from '@/hooks/useResetSettings';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
 import { saveViewSettings } from '@/helpers/settings';
 import { SettingsPanelPanelProp } from './SettingsDialog';
-import { BoxedList, NavigationRow, SettingLabel, SettingsRow } from './primitives';
+import { BoxedList, NavigationRow, PanelHeader, SettingLabel, SettingsRow } from './primitives';
 import NumberInput from './NumberInput';
 import FontDropdown from './FontDropDown';
 import CustomFonts from './CustomFonts';
@@ -302,6 +302,10 @@ const FontPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
 
   return (
     <div className='my-4 w-full space-y-6'>
+      <PanelHeader
+        title={_('Font')}
+        description={_('Choose the typeface, size and weight your books are set in.')}
+      />
       <label
         data-setting-id='settings.font.overrideBookFont'
         className='flex cursor-pointer items-center justify-between px-4'

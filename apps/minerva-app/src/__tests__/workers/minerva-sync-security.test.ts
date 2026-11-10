@@ -229,7 +229,7 @@ describe('SEC-01: la credencial KOSync (MD5) no ocupa el campo de la nativa (SHA
     const stored = env.SYNC_DB.users[0]!;
     // The passphrase is stretched with PBKDF2 and salted, so the table holds
     // neither the passphrase nor a digest of it that a GPU could attack.
-    expect(String(stored['passhash'])).toMatch(/^pbkdf2-sha256\$/);
+    expect(String(stored['passhash'])).toMatch(/^(argon2id|pbkdf2-sha256)\$/);
     expect(String(stored['userkey'])).toMatch(/^kosync-sha256\$/);
     expect(stored['passhash']).not.toBe(stored['userkey']);
   });

@@ -32,7 +32,7 @@ const WindowButton: React.FC<WindowButtonProps> = ({ onClick, label, id, childre
   <button
     id={id}
     onClick={onClick}
-    className='window-button bg-base-200/35 hover:bg-base-200 text-base-content/85 hover:text-base-content'
+    className='window-button bg-base-200/35 hover:bg-base-200 text-base-content/85 hover:text-base-content flex h-8 min-h-8 w-8 min-w-8 items-center justify-center'
     aria-label={label}
   >
     {children}

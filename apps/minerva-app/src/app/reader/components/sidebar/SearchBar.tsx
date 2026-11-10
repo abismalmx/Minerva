@@ -435,7 +435,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isVisible, bookKey, onHideSearchB
             onClick={handleClearHistory}
             className={clsx(
               'text-base-content/50 hover:text-base-content/80 shrink-0 items-center',
-              'flex h-6 min-h-6 w-8 min-w-8 items-center justify-center p-0',
+              'flex h-8 min-h-8 w-8 min-w-8 items-center justify-center p-0',
             )}
             title={_('Clear search history')}
             aria-label={_('Clear search history')}

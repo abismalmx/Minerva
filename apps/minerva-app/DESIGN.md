@@ -58,8 +58,45 @@ Derived from the emblem (`logo.jpeg`). Applied on top of the Adwaita base, never
   Brand color stays reserved for CTAs (§2.2); burgundy and blue are accents, not fills.
 - **Display face.** Cormorant Garamond 500/600 (`font-display`, self-hosted in `public/fonts`) for the
   wordmark, dialog titles and brand headers only. Body and controls stay Inter.
+- **Data face.** IBM Plex Mono 400/500/600 (`font-mono`, self-hosted in `public/fonts`) for anything
+  that is a *figure* rather than prose: page counters, folios, percentages, counters in the reader.
+  Always with `tabular-nums`, so a column of numbers does not dance while a value changes.
+  `.minerva-folio` is the canonical class for a folio.
 - **Mark.** The emblem is the app icon and About/brand headers. It never appears behind reading text.
 - **Browser surfaces.** Selection, caret and accent-color follow `--color-primary`.
+
+#### 1.1.1 The three signs of Minerva
+
+The identity layer has exactly three signs. They are implemented once, in
+`src/styles/globals.css`, and opted into by class — a surface never invents its
+own version of them.
+
+| Sign | Class | What it is |
+| --- | --- | --- |
+| **El lomo** (the spine) | `.minerva-spine` | A vertical rule on the leading edge of a cover whose filled portion is the reading progress. It replaces badges and percentages: the shelf states where each book was left. |
+| **Halftone** | `.minerva-halftone` | A dot screen — the way a cover was printed — bleeding off the start corner of a surface. Paper, not glass. |
+| **The gilded moment** | `.minerva-spine-host` | The one moment of motion: the spine warms from muted bronze to full bronze when a tile takes focus or hover. **Colour only** — no scale, no translate (§2.5). |
+
+Rules:
+
+- The lomo appears **only on a book that has been opened** (`BookSpine` returns
+  `null` for an untouched book). A shelf of untouched spines would be noise.
+- Under `[data-eink='true']` the lomo becomes a 1px rule in `base-content`, the
+  halftone disappears and the gilded moment still works — it was never a glow.
+- The display face belongs to the **product speaking**: the wordmark, the
+  library poster, the title of the book in the reader, the sign-in title. The UI
+  face belongs to the **product working**: rows, labels, buttons, panel titles.
+
+#### 1.1.2 The library poster
+
+The library opens with one protagonist (`ContinueReadingHero`): the book in
+progress, its reading percentage printed large on its own tonal panel, the
+folio and the time left in mono, and one action — *Continue*. The rest of the
+shelf unfolds below it.
+
+It appears only on the default shelf of an unfiltered library: a search, a
+group, a named shelf or select mode is a view over the collection, not a place
+to advertise one book.
 
 ### 2. Principles
 
@@ -102,6 +139,19 @@ calmer than recoloring.
 When a button hovers, **one focal element changes**, not the whole button. The icon chip
 inverts; the label stays steady. The badge intensifies; the row stays neutral. This reads
 as deliberate, not decorative.
+
+On the bookshelf grid the focal element is the **title**: it warms
+(`text-base-content/80` → `group-hover:text-base-content`) while the cell stays
+put, and the lomo catches the light on a book that has been opened (§1.1.1).
+A row in the list view may tint the row itself — there the row *is* the item.
+
+#### 2.4.1 Badges
+
+A badge is a fixed-height chip, never a filled block of colour: one size, one
+radius, a translucent fill plus an inset ring at ~25 %, and a label that keeps
+its own contrast. The colour marks the state; it never replaces the text, and
+the brand accent is not used for warnings — the meaning of a colour has to stay
+stable. See `StatusBadge`.
 
 #### 2.5 Motion is color, not transform
 
@@ -382,6 +432,23 @@ to this list" pattern. **Do not** use `btn-outline btn-primary` for these.
 ### 5. Boxed list anatomy
 
 The settings UI is built on boxed lists. One pattern, used everywhere.
+
+#### Panel opening
+
+Every top-level panel opens with the `<PanelHeader>` primitive
+(`src/components/settings/primitives/PanelHeader.tsx`): the panel's name and
+one line about what the surface does (§2.9). Sub-pages use `<SubPageHeader>`,
+which carries the same description slot.
+
+```tsx
+<PanelHeader
+  title={_('Font')}
+  description={_('Choose the typeface, size and weight your books are set in.')}
+/>
+```
+
+The title keeps the UI face (`text-lg font-semibold tracking-tight`): the
+panel name is a label the user works with, not the product speaking (§1.1.1).
 
 #### Container
 
@@ -694,6 +761,17 @@ it's the same archetype adapted for screen real estate.
 - Bottom sheets on mobile via `snapHeight` prop.
 - Backdrop: `sm:!bg-black/50` (or `/20` when nested over a darker surface).
 
+#### Side panel (drawer)
+
+A dialog that is really a *detail view* of a list — the book details of the
+library — is a side panel on a wide screen, not a modal: it hugs the end edge
+(`sm:!end-0`, logical, so RTL puts it on the correct side), runs the full
+height, and leaves the shelf visible beside it under a lighter scrim
+(`sm:bg-black/25!`). The list stays on screen, so the detail reads as a
+continuation of the list and not as a jump somewhere else.
+
+On narrow screens it falls back to the regular modal/sheet.
+
 #### Popup (popover)
 
 For dictionary lookups, annotation editors, and other anchored overlays. Uses the
@@ -802,10 +880,19 @@ prefixes.
 
 #### Keyboard
 
-- Tab order matches visual order. If you use `flex-row-reverse` for visual layout,
+- Tab order matches visual order. If you use `flex-row-reverse` for visual order,
   consider `tabIndex` to fix order.
 - Modal focus trap: `<Dialog>` handles this.
 - Esc to dismiss: `<Dialog>` and `<Popup>` handle this.
+- **Esc returns the focus to the element that opened the surface.** `<Dialog>`
+  restores it when it closes *and* when it is unmounted while open (the library
+  unmounts the book details panel, so the `isOpen === false` branch never
+  runs) — but only while the focus is still inside the dialog, so a click that
+  landed elsewhere keeps its own focus.
+- **A row that contains a button must not swallow its keys.** The bookshelf
+  tile handles Enter/Space to open the book; that handler ignores events whose
+  target is a nested control (`button, a, input, select, textarea`), so Enter
+  on the "book details" button opens the details and not the book.
 - Arrow keys for grouped controls (radio-like tab strips, sortable lists). dnd-kit's
   `KeyboardSensor` is wired for sortable lists.
 
@@ -1053,6 +1140,9 @@ When designing a new surface, walk this checklist:
 9. **Is focus visible?** `focus-visible:ring-2 focus-visible:ring-base-content/15` on
    custom buttons. (§7)
 10. **Will it work on the smallest theme + e-ink?** Toggle Sepia + Eink, retest.
+11. **Does it carry a Minerva sign?** A book tile gets the lomo (`.minerva-spine`),
+    a raised surface gets the halftone (`.minerva-halftone`), figures get the mono
+    face (`.minerva-folio`). (§1.1.1)
 
 ---
 

@@ -109,6 +109,7 @@ import { getFontFamilies } from '@/utils/style';
 import type { QuoteCardContent } from '@/utils/quoteCardRenderer';
 import ImportAnnotationsDialog from './ImportAnnotationsDialog';
 import GeminiReadingPopup from './GeminiReadingPopup';
+import ImageSearchDialog, { SelectedImageData } from './ImageSearchDialog';
 import { GEMINI_HANDOFF_INSTRUCTIONS, dispatchGeminiHandoff } from '../../utils/geminiIntent';
 import Alert from '@/components/Alert';
 import ModalPortal from '@/components/ModalPortal';
@@ -237,6 +238,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     defaultFont: QuoteCardFont;
   } | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showImageSearchDialog, setShowImageSearchDialog] = useState(false);
+  const [imageSearchInitialQuery, setImageSearchInitialQuery] = useState('');
+  const [imageSearchTargetNoteId, setImageSearchTargetNoteId] = useState<string | null>(null);
   const [importingAnnotations, setImportingAnnotations] = useState(false);
   // "Clear Annotations" confirm dialog. Hosted here (and not in BookMenu)
   // because the menu unmounts the moment the user picks the entry, which
@@ -291,7 +295,8 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     showDictionaryPopup ||
     showDeepLPopup ||
     showProofreadPopup ||
-    showGeminiPopup;
+    showGeminiPopup ||
+    showImageSearchDialog;
 
   const popupPadding = useResponsiveSize(10);
   const trianglePadding = popupPadding * 2 + 6;
@@ -1276,6 +1281,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
           if (selection?.popup) handleHighlight();
           handleDismissPopupAndSelection();
           break;
+        case 'image':
+          handleOpenImageSearch();
+          break;
         case 'search':
           handleSearch();
           break;
@@ -2072,6 +2080,81 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     });
   };
 
+  const handleOpenImageSearch = (targetNoteId?: string) => {
+    const rawQuery = (selection?.text || '').trim();
+    if (!rawQuery && !targetNoteId) return;
+    setImageSearchTargetNoteId(targetNoteId || null);
+    setImageSearchInitialQuery(rawQuery);
+    setShowAnnotPopup(false);
+    void suppressNativeSelectionHandles();
+    setShowImageSearchDialog(true);
+  };
+
+  const handleSelectImageForNote = async (data: SelectedImageData) => {
+    setShowImageSearchDialog(false);
+    const { title, url, extract, includeExtract } = data;
+    let imageMarkdown = `![${title || _('Photo')}](${url})`;
+    if (extract && includeExtract !== false) {
+      imageMarkdown += `\n\n> ${extract}`;
+    }
+
+    if (imageSearchTargetNoteId) {
+      const targetNote = getConfig(bookKey)?.booknotes?.find(
+        (annotation) => annotation.id === imageSearchTargetNoteId && !annotation.deletedAt,
+      );
+      if (targetNote) {
+        const existing = targetNote.note?.trim();
+        const updated = existing ? `${existing}\n\n${imageMarkdown}` : imageMarkdown;
+        await saveBooknoteNoteText(targetNote.id, updated);
+        eventDispatcher.dispatch('toast', {
+          type: 'info',
+          message: _('Photo attached to note'),
+          timeout: 2000,
+        });
+        setImageSearchTargetNoteId(null);
+        handleDismissPopupAndSelection();
+        return;
+      }
+    }
+
+    if (!selection?.text) return;
+    if (selection.popup && !selection.cfi) {
+      eventDispatcher.dispatch('toast', {
+        type: 'warning',
+        message: _('This selection cannot be annotated.'),
+        timeout: 3000,
+      });
+      return;
+    }
+
+    if (!selection.popup) {
+      const { sectionHref: href } = progress;
+      selection.href = href;
+    }
+
+    const created = handleHighlight(false, undefined, true);
+    const cfi = selection.popup ? selection.cfi : view?.getCFI(selection.index, selection.range);
+    const target =
+      created[0] ??
+      getConfig(bookKey)?.booknotes?.find(
+        (annotation) =>
+          annotation.type === 'annotation' && annotation.cfi === cfi && !annotation.deletedAt,
+      );
+    if (!target) return;
+
+    const existing = target.note?.trim();
+    const finalNote = existing ? `${existing}\n\n${imageMarkdown}` : imageMarkdown;
+    const saved = await saveBooknoteNoteText(target.id, finalNote);
+    if (saved) {
+      eventDispatcher.dispatch('toast', {
+        type: 'info',
+        message: _('Photo attached to note'),
+        timeout: 2000,
+      });
+    }
+    handleDismissPopupAndSelection();
+  };
+
   // `oneTime` is required rather than defaulted: it decides whether this reads
   // the selection and stops or starts an open-ended session from it, and every
   // entry point here means the former. Defaulting it silently turned Ctrl/Cmd+R
@@ -2749,6 +2832,13 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
           onClick: handleAnnotate,
           disabled: popupSelectionNoCfi,
         };
+      case 'image':
+        return {
+          tooltipText: _(label),
+          Icon,
+          onClick: () => handleOpenImageSearch(),
+          disabled: popupSelectionNoCfi,
+        };
       case 'search':
         return { tooltipText: _(label), Icon, onClick: handleSearch };
       case 'dictionary':
@@ -2831,6 +2921,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     showDeepLPopup ||
     showProofreadPopup ||
     showGeminiPopup ||
+    showImageSearchDialog ||
     !!noteEditorTarget;
 
   // Below `sm` (or short landscape) the note editor is a bottom sheet rather
@@ -2901,6 +2992,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
       {noteEditorInSheet && (
         <NoteEditorSheet
           value={editedNoteText}
+          selectionText={selection?.text}
           onSave={handleSaveNote}
           onCancel={handleCancelNote}
         />
@@ -2925,7 +3017,12 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
             onEditNote={handleEditNote}
             noteEditor={
               noteEditorInPopup
-                ? { value: editedNoteText, onSave: handleSaveNote, onCancel: handleCancelNote }
+                ? {
+                    value: editedNoteText,
+                    selectionText: selection?.text,
+                    onSave: handleSaveNote,
+                    onCancel: handleCancelNote,
+                  }
                 : null
             }
             position={annotPopupPosition}
@@ -3018,6 +3115,17 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
           onClose={handleCloseQuoteCard}
         />
       )}
+      <ImageSearchDialog
+        isOpen={showImageSearchDialog}
+        initialQuery={imageSearchInitialQuery}
+        bookLanguage={bookData.book?.language}
+        onSelectImage={handleSelectImageForNote}
+        onClose={() => {
+          setShowImageSearchDialog(false);
+          setImageSearchTargetNoteId(null);
+          handleDismissPopupShowToolbar();
+        }}
+      />
       {showExportDialog && exportData && bookData.book && (
         <ExportMarkdownDialog
           bookKey={bookKey}

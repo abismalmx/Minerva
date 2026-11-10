@@ -1,0 +1,2 @@
+# Cloudflare Pages rewrites for dynamic routes
+/reader/* /reader 200

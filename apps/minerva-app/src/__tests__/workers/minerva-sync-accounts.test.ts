@@ -91,6 +91,45 @@ describe('las cuentas nativas', () => {
     expect(claims?.email).toBe('alice@example.com');
   });
 
+  it('permite registrarse e iniciar sesión únicamente con un nombre de usuario (sin correo)', async () => {
+    const env = makeEnv();
+    const regResp = await handleRegister(
+      req('/api/auth/register', jsonBody({ username: 'bob_reader', passphrase: PASSPHRASE })),
+      env as never,
+    );
+    expect(regResp.status).toBe(201);
+    const regBody = (await regResp.json()) as {
+      token: string;
+      user: { id: string; email: string; username: string };
+    };
+    expect(regBody.user.username).toBe('bob_reader');
+
+    // Inicia sesión solo con username
+    const loginResp = await handleLogin(
+      req('/api/auth/login', jsonBody({ username: 'bob_reader', passphrase: PASSPHRASE })),
+      env as never,
+    );
+    expect(loginResp.status).toBe(200);
+    const loginBody = (await loginResp.json()) as {
+      token: string;
+      user: { id: string; email: string; username: string };
+    };
+    expect(loginBody.user.username).toBe('bob_reader');
+  });
+
+  it('rechaza un nombre de usuario repetido con 409', async () => {
+    const env = makeEnv();
+    await handleRegister(
+      req('/api/auth/register', jsonBody({ username: 'unique_user', passphrase: PASSPHRASE })),
+      env as never,
+    );
+    const dup = await handleRegister(
+      req('/api/auth/register', jsonBody({ username: 'unique_user', passphrase: PASSPHRASE })),
+      env as never,
+    );
+    expect(dup.status).toBe(409);
+  });
+
   it('un email repetido responde 409', async () => {
     const env = makeEnv();
     await register(env, 'alice@example.com');

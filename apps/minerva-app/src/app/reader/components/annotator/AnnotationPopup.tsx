@@ -11,6 +11,7 @@ import HighlightOptions from './HighlightOptions';
 
 export interface AnnotationNoteEditorTarget {
   value: string;
+  selectionText?: string;
   onSave: (note: string) => void;
   onCancel: () => void;
 }
@@ -136,6 +137,7 @@ const AnnotationPopup: React.FC<AnnotationPopupProps> = ({
           {noteEditor ? (
             <AnnotationNoteEditor
               value={noteEditor.value}
+              selectionText={noteEditor.selectionText}
               isVertical={isVertical}
               // Same chrome recipe as Popup's own container, so the editor
               // reads as a panel over the page rather than a shadowless block

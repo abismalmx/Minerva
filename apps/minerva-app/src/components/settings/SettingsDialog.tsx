@@ -462,7 +462,7 @@ const SettingsDialog: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       <button
         onClick={handleClose}
         aria-label={_('Close')}
-        className={'bg-base-300/65 btn btn-ghost btn-circle hidden h-6 min-h-6 w-6 p-0 sm:flex'}
+        className={'bg-base-300/65 btn btn-ghost btn-circle hidden h-9 min-h-9 w-9 p-0 sm:flex'}
       >
         <MdClose size={closeIconSize} />
       </button>

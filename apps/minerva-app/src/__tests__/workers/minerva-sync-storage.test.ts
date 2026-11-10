@@ -322,6 +322,56 @@ describe('el contrato de almacenamiento que el cliente espera', () => {
     expect(env.LIBRARY_BUCKET.objects.has(key)).toBe(false);
   });
 
+  it('el borrado elimina todos los archivos asociados a un bookHash (libro, portada y prefijo R2)', async () => {
+    const env = makeEnv();
+    const BOOK_HASH = 'abc123hash';
+    const bookRes = await handleStorageUpload(
+      req(
+        '/api/storage/upload',
+        jsonBody({ fileName: `books/${BOOK_HASH}/book.epub`, fileSize: 10, bookHash: BOOK_HASH }),
+      ),
+      env as never,
+      USER_ID,
+    );
+    const { fileKey: bookKey, uploadUrl: bookUploadUrl } = (await bookRes.json()) as {
+      fileKey: string;
+      uploadUrl: string;
+    };
+    const bookTicket = new URL(bookUploadUrl).searchParams.get('ticket')!;
+    await putObject(env, bookKey, bookTicket, 'epub-data');
+
+    const coverRes = await handleStorageUpload(
+      req(
+        '/api/storage/upload',
+        jsonBody({ fileName: `books/${BOOK_HASH}/cover.png`, fileSize: 5, bookHash: BOOK_HASH }),
+      ),
+      env as never,
+      USER_ID,
+    );
+    const { fileKey: coverKey, uploadUrl: coverUploadUrl } = (await coverRes.json()) as {
+      fileKey: string;
+      uploadUrl: string;
+    };
+    const coverTicket = new URL(coverUploadUrl).searchParams.get('ticket')!;
+    await putObject(env, coverKey, coverTicket, 'cover');
+
+    expect(env.LIBRARY_BUCKET.objects.has(bookKey)).toBe(true);
+    expect(env.LIBRARY_BUCKET.objects.has(coverKey)).toBe(true);
+
+    const deleteRes = await handleStorageDelete(
+      req(`/api/storage/delete?bookHash=${BOOK_HASH}`, { method: 'DELETE' }),
+      env as never,
+      USER_ID,
+    );
+    expect(deleteRes.status).toBe(200);
+    const deleteBody = (await deleteRes.json()) as { deleted: number; fileKeys: string[] };
+    expect(deleteBody.deleted).toBe(2);
+    expect(deleteBody.fileKeys).toContain(bookKey);
+    expect(deleteBody.fileKeys).toContain(coverKey);
+    expect(env.LIBRARY_BUCKET.objects.has(bookKey)).toBe(false);
+    expect(env.LIBRARY_BUCKET.objects.has(coverKey)).toBe(false);
+  });
+
   it('la subida devuelve tambien la URL de descarga', async () => {
     const env = makeEnv();
     const { body, key, ticket } = await reserve(env, 'cover.png', 5);

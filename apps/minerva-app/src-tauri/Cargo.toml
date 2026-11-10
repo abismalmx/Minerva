@@ -1,10 +1,10 @@
 [package]
 name = "Minerva"
-version = "0.2.2"
-description = "Your online library"
-authors = ["Bilingify LLC"]
-license = ""
-repository = ""
+version = "1.0.5"
+description = "Minerva - Digital library and self-hosted book synchronization"
+authors = ["Minerva Project"]
+license = "AGPL-3.0"
+repository = "https://github.com/minerva/minerva"
 edition = "2021"
 rust-version = "1.90"
 

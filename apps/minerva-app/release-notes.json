@@ -1,5 +1,16 @@
 {
   "releases": {
+    "1.0.5": {
+      "date": "2026-11-09",
+      "notes": [
+        "Minerva: Fork independiente de Readest enfocado en auto-alojamiento 100% privado sobre Cloudflare Workers, D1 y R2",
+        "Cuaderno de notas enriquecido: RichNotebookEditor con soporte completo de Markdown, jerarquía por capítulos y extensiones avanzadas",
+        "Biblioteca mejorada: Hero de lectura continuada (ContinueReadingHero), diseño de lomo de libro (BookSpine) y nueva barra de herramientas",
+        "Buscador de imágenes: Integración de ImageSearchDialog para anotaciones visuales y notas contextuales",
+        "Sincronización Minerva Sync: Protocolo nativo Cloudflare + compatibilidad KOSync para KOReader sin telemetría de terceros",
+        "Empaquetado multiplataforma: Soporte para AppImage autónomo y paquete APK Android con versión 1.0.5"
+      ]
+    },
     "0.12.16": {
       "date": "2026-10-14",
       "notes": [

@@ -1,5 +1,6 @@
 import { PiUserCircle } from 'react-icons/pi';
 import { useTranslation } from '@/hooks/useTranslation';
+import { isSelfHosted } from '@/utils/access';
 import { PlanDetails } from '../utils/plan';
 import UserAvatar from '@/components/UserAvatar';
 
@@ -37,11 +38,17 @@ const UserInfo: React.FC<UserInfoProps> = ({ avatarUrl, userFullName, userEmail,
         <h2 className='text-base-content text-xl font-bold md:text-2xl'>{userFullName}</h2>
         <p className='text-base-content/60'>{userEmail}</p>
         <div className='mt-3'>
-          <span
-            className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${planDetails.color}`}
-          >
-            {_(planDetails.name)}
-          </span>
+          {isSelfHosted() ? (
+            <span className='inline-block rounded-full px-3 py-1 text-sm font-medium bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200 border border-amber-300 dark:border-amber-700/50'>
+              {_('Cloudflare Self-Hosted')}
+            </span>
+          ) : (
+            <span
+              className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${planDetails.color}`}
+            >
+              {_(planDetails.name)}
+            </span>
+          )}
         </div>
       </div>
     </div>

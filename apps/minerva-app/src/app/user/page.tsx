@@ -17,6 +17,7 @@ import { navigateBackFromProfile } from '@/utils/nav';
 import { eventDispatcher } from '@/utils/event';
 import { isTauriAppPlatform } from '@/services/environment';
 import { getPlanDetails, shouldUseBillingPortal } from './utils/plan';
+import { isSelfHosted } from '@/utils/access';
 import { Toast } from '@/components/Toast';
 import {
   purchaseIAPProduct,
@@ -306,8 +307,12 @@ const ProfilePage = () => {
   }
 
   const avatarUrl = user?.user_metadata?.['picture'] || user?.user_metadata?.['avatar_url'];
-  const userFullName = user?.user_metadata?.['full_name'] || '-';
-  const userEmail = user?.email || '';
+  const rawEmail = user?.email || '';
+  const username =
+    (user as unknown as { username?: string })?.username ||
+    (rawEmail.endsWith('@minerva.local') ? rawEmail.split('@')[0] : '');
+  const userFullName = user?.user_metadata?.['full_name'] || username || '-';
+  const userEmail = (rawEmail.endsWith('@minerva.local') ? username : rawEmail) || '';
   const userPlanDetails =
     getPlanDetails(userProfilePlan, availablePlans) || getPlanDetails('free', availablePlans);
 
@@ -351,9 +356,10 @@ const ProfilePage = () => {
                     planDetails={userPlanDetails}
                   />
 
-                  {!showStorageManager && !showSharedLinksManager && !showSyncManager && (
-                    <UsageStats quotas={quotas} />
-                  )}
+                  {!isSelfHosted() &&
+                    !showStorageManager &&
+                    !showSharedLinksManager &&
+                    !showSyncManager && <UsageStats quotas={quotas} />}
                 </div>
 
                 {showStorageManager ? (
@@ -371,18 +377,20 @@ const ProfilePage = () => {
                   </div>
                 ) : (
                   <>
-                    <div className='flex flex-col gap-y-8 px-2 sm:px-6'>
-                      <PlansComparison
-                        availablePlans={availablePlans}
-                        userPlan={userProfilePlan}
-                        customizationPurchased={customizationPurchased}
-                        onSubscribe={
-                          appService.hasIAP && iapAvailable
-                            ? handleIAPSubscribe
-                            : handleStripeSubscribe
-                        }
-                      />
-                    </div>
+                    {!isSelfHosted() && (
+                      <div className='flex flex-col gap-y-8 px-2 sm:px-6'>
+                        <PlansComparison
+                          availablePlans={availablePlans}
+                          userPlan={userProfilePlan}
+                          customizationPurchased={customizationPurchased}
+                          onSubscribe={
+                            appService.hasIAP && iapAvailable
+                              ? handleIAPSubscribe
+                              : handleStripeSubscribe
+                          }
+                        />
+                      </div>
+                    )}
                     <div className='flex flex-col gap-y-8 px-6'>
                       <AccountActions
                         userPlan={userProfilePlan}

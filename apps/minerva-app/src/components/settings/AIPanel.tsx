@@ -27,7 +27,7 @@ import type {
 } from '@/services/ai/types';
 import { exportReedyMetricsBundle } from '@/services/reedy/instrumentation';
 import { isTauriAppPlatform } from '@/services/environment';
-import { BoxedList, SettingLabel, SettingsRow, SettingsSwitchRow } from './primitives';
+import { BoxedList, PanelHeader, SettingLabel, SettingsRow, SettingsSwitchRow } from './primitives';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 type CustomModelStatus = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -496,6 +496,10 @@ const AIPanel: React.FC = () => {
 
   return (
     <div className='my-4 w-full space-y-6'>
+      <PanelHeader
+        title={_('AI Assistant')}
+        description={_('Let an assistant answer questions about the book you are reading.')}
+      />
       <BoxedList title={_('AI Assistant')}>
         <SettingsSwitchRow
           label={_('Enable AI Assistant')}

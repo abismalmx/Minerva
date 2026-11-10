@@ -253,8 +253,18 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
           title={editMode ? _('Edit Metadata') : _('Book Details')}
           isOpen={isOpen}
           onClose={handleClose}
+          // The shelf stays readable behind the panel: a lighter scrim, so the
+          // book the panel is about is still on screen.
+          bgClassName='sm:bg-black/25!'
           boxClassName={clsx(
-            editMode ? 'sm:min-w-[600px] sm:max-w-[600px]' : 'sm:min-w-[480px] sm:max-w-[480px]',
+            // On a wide screen the details are a side panel, not a modal: it
+            // hugs the end edge, full height, and the shelf stays on screen
+            // beside it. The logical `end` keeps it on the correct side in RTL.
+            'sm:!inset-y-0 sm:!end-0 sm:!start-auto sm:!h-full sm:!max-h-full',
+            'sm:!rounded-none sm:border-s sm:border-base-content/10',
+            editMode
+              ? 'sm:!w-[32rem] sm:!max-w-[32rem] sm:!min-w-0'
+              : 'sm:!w-[26rem] sm:!max-w-[26rem] sm:!min-w-0',
             'sm:h-auto sm:max-h-[90%]',
           )}
           contentClassName='px-6! py-4!'

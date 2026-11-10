@@ -44,6 +44,8 @@ interface StreamProps {
   onScrollerRef?: (element: HTMLElement | Window | null) => void;
   importAction?: ReactNode;
   importTile?: ReactNode;
+  /** Rendered above the first row and scrolled with it (the library poster). */
+  header?: ReactNode;
   pageNavigation?: boolean;
   /** Drop the e-ink Previous/Next buttons; keys still page. */
   hidePageButtons?: boolean;
@@ -276,6 +278,10 @@ const COMPONENTS: Components<StreamRow, StreamContext> = {
   Item: StreamItem,
   Footer: StreamFooter,
 };
+/** The poster above the shelf. It scrolls with the rows, so it is a header of
+    the stream rather than a bar pinned over it. */
+const StreamHeader = ({ header }: { header?: ReactNode }) =>
+  header ? <div className='transform-wrapper'>{header}</div> : null;
 export default function BookshelfStream({
   sections,
   autoColumns,
@@ -285,6 +291,7 @@ export default function BookshelfStream({
   onScrollerRef,
   importAction,
   importTile,
+  header,
   pageDurations,
   scale = 1,
   pageNavigation = false,
@@ -323,6 +330,12 @@ export default function BookshelfStream({
   }, []);
   const columns = bookshelfColumns(width / scale, autoColumns, fixedColumns);
   const includeImport = !!importTile;
+  // A new component type remounts the header, so the object is memoized on
+  // the node itself: the poster must not be rebuilt on every parent render.
+  const components = useMemo(
+    () => ({ ...COMPONENTS, Header: () => <StreamHeader header={header} /> }),
+    [header],
+  );
   const rows = useMemo(
     () => buildBookshelfRows(sections, columns, includeImport),
     [sections, columns, includeImport],
@@ -373,7 +386,7 @@ export default function BookshelfStream({
             overscan={pageNavigation ? Math.max(400, height) : 400}
             defaultItemHeight={200}
             context={context}
-            components={COMPONENTS}
+            components={components}
             scrollerRef={handleScrollerRef}
             itemsRendered={(items) => {
               if (items.length > 0) setRenderedRows(rows);

@@ -220,7 +220,7 @@ export const downloadFile = async ({
   }
 };
 
-export const deleteFile = async (filePath: string) => {
+export const deleteFile = async (filePath: string, bookHash?: string) => {
   try {
     const userId = await getUserID();
     if (!userId) {
@@ -228,7 +228,11 @@ export const deleteFile = async (filePath: string) => {
     }
 
     const fileKey = `${userId}/${filePath}`;
-    await fetchWithAuth(`${API_ENDPOINTS.delete}?fileKey=${encodeURIComponent(fileKey)}`, {
+    let deleteUrl = `${API_ENDPOINTS.delete}?fileKey=${encodeURIComponent(fileKey)}`;
+    if (bookHash) {
+      deleteUrl += `&bookHash=${encodeURIComponent(bookHash)}`;
+    }
+    await fetchWithAuth(deleteUrl, {
       method: 'DELETE',
     });
   } catch (error) {
@@ -236,6 +240,21 @@ export const deleteFile = async (filePath: string) => {
     // callers dispatch this without awaiting, so throwing here surfaces as an
     // unhandled promise rejection (Sentry MINERVA-5). Log and swallow instead.
     console.warn('File deletion failed:', error);
+  }
+};
+
+export const deleteBookCloudFiles = async (bookHash: string) => {
+  try {
+    const userId = await getUserID();
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    await fetchWithAuth(`${API_ENDPOINTS.delete}?bookHash=${encodeURIComponent(bookHash)}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.warn('Delete book cloud files failed:', error);
   }
 };
 

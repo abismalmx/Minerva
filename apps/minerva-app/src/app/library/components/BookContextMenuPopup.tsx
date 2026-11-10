@@ -93,9 +93,12 @@ const BookContextMenuPopup: React.FC<BookContextMenuPopupProps> = ({
         style={{ left: placement?.left ?? 0, top: placement?.top ?? 0 }}
       >
         <Menu
-          className='dropdown-content no-triangle bg-base-100 rounded-box relative! z-[1] mt-0! p-2 shadow-sm'
+          className='dropdown-content no-triangle minerva-menu relative! z-[1] mt-0! rounded-box p-2'
           onCancel={onClose}
         >
+          {/* The gilded edge: the one mark that says this menu belongs to
+              Minerva (§1.1.1). */}
+          <span className='bg-primary mb-1.5 block h-[2px] w-8 rounded-full' aria-hidden='true' />
           {items.map(({ text, action }) => (
             <MenuItem
               key={text}

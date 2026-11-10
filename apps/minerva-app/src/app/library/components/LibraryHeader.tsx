@@ -112,8 +112,13 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
       }}
     >
       <div className='flex w-full items-center justify-between space-x-6 sm:space-x-12'>
-        <div className='exclude-title-bar-mousedown relative flex w-full items-center ps-4'>
-          <div className='relative flex h-9 w-full items-center sm:h-7'>
+        <div className='exclude-title-bar-mousedown relative flex w-full items-center gap-4 ps-4'>
+          {/* The wordmark. The display face carries the brand voice, and it is
+              the one place in the app where the product names itself. */}
+          <span className='font-display hidden shrink-0 text-xl leading-none font-semibold tracking-tight sm:block'>
+            Minerva
+          </span>
+          <div className='relative flex h-9 w-full items-center sm:h-8'>
             {/* The icon doubles as the mode indicator and toggle: magnifier
                 for book search, full-text glyph for content search. */}
             <div className='absolute inset-y-0 start-0 z-10 flex items-center'>
@@ -124,7 +129,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                 title={searchTarget === 'text' ? _('Full Text Search') : _('Search Books')}
                 className={clsx(
                   'text-base-content/55 hover:text-base-content',
-                  'not-eink:transition-colors ms-1.5 flex h-7 min-h-7 items-center justify-center',
+                  'not-eink:transition-colors ms-1.5 flex h-8 min-h-8 items-center justify-center',
                   'touch-target w-8 rounded-full bg-transparent duration-150',
                   'focus-visible:ring-base-content/15 focus-visible:outline-hidden focus-visible:ring-2',
                 )}
@@ -152,7 +157,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
               onChange={handleSearchChange}
               spellCheck='false'
               className={clsx(
-                'window-drag-input search-input input h-9 w-full rounded-full pe-[30%] ps-10 sm:h-7',
+                'window-drag-input search-input input h-9 w-full rounded-full pe-[30%] ps-10 sm:h-8',
                 'bg-base-300/45 border-0',
                 'font-sans text-sm font-light',
                 'placeholder:text-base-content/50 truncate',
@@ -210,7 +215,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                   className={clsx(
                     'exclude-title-bar-mousedown dropdown-bottom dropdown-center cursor-pointer',
                   )}
-                  buttonClassName='p-0 h-6 min-h-6 w-6 flex touch-target items-center justify-center bg-transparent!'
+                  buttonClassName='p-0 h-8 min-h-8 w-8 flex touch-target items-center justify-center bg-transparent!'
                   toggleButton={<PiPlus role='none' className='m-0.5 h-5 w-5' />}
                 >
                   <ImportMenu
@@ -228,12 +233,15 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                     onClick={onToggleSelectMode}
                     aria-label={_('Select Books')}
                     title={_('Select Books')}
-                    className='h-6'
+                    className='flex h-8 w-8 items-center justify-center'
                   >
                     {isSelectMode ? (
-                      <PiSelectionAllFill role='button' className='text-base-content/60 h-6 w-6' />
+                      <PiSelectionAllFill
+                        aria-hidden='true'
+                        className='text-base-content/60 h-6 w-6'
+                      />
                     ) : (
-                      <PiSelectionAll role='button' className='text-base-content/60 h-6 w-6' />
+                      <PiSelectionAll aria-hidden='true' className='text-base-content/60 h-6 w-6' />
                     )}
                   </button>
                 )}

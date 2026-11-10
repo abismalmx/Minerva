@@ -45,6 +45,7 @@ import { getInitializedAppService, isTauriAppPlatform } from '@/services/environ
 import { checkForAppUpdates, checkAppReleaseNotes } from '@/helpers/updater';
 import { impactFeedback } from '@tauri-apps/plugin-haptics';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { loadPersistedSession } from '@/services/sessionPersistence';
 
 import { useEnv } from '@/context/EnvContext';
 import { useAuth } from '@/context/AuthContext';
@@ -216,7 +217,7 @@ const LibraryPageWithSearchParams = () => {
 const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchParams | null }) => {
   const router = useAppRouter();
   const { envConfig, appService } = useEnv();
-  const { token, user } = useAuth();
+  const { token, user, login } = useAuth();
   const {
     library: libraryBooks,
     libraryLoaded: libraryLoadedFromDisk,
@@ -785,7 +786,17 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     const initLogin = async () => {
       const appService = await envConfig.getAppService();
       const settings = await appService.loadSettings();
-      if (token && user) {
+      let currentToken = token;
+      let currentUser = user;
+      if (!currentToken || !currentUser) {
+        const persisted = await loadPersistedSession();
+        if (persisted && persisted.token && persisted.user) {
+          login(persisted.token, persisted.user as unknown as import('@supabase/supabase-js').User);
+          currentToken = persisted.token;
+          currentUser = persisted.user as unknown as import('@supabase/supabase-js').User;
+        }
+      }
+      if (currentToken && currentUser) {
         if (!settings.keepLogin) {
           settings.keepLogin = true;
           setSettings(settings);

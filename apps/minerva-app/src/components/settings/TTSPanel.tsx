@@ -21,6 +21,7 @@ import { getTTSCacheConfig, setTTSCacheConfig } from '@/services/tts/providers/b
 import {
   BoxedList,
   NavigationRow,
+  PanelHeader,
   SettingsRow,
   SettingsSelect,
   SettingsSwitchRow,
@@ -184,6 +185,10 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
 
   return (
     <div className='my-4 w-full space-y-6'>
+      <PanelHeader
+        title={_('TTS')}
+        description={_('Choose the voice that reads the book aloud to you.')}
+      />
       <BoxedList title={_('Voices')} cardClassName='overflow-hidden'>
         <NavigationRow
           title={_('Custom TTS Services')}

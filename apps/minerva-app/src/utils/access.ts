@@ -26,6 +26,7 @@ export const getSubscriptionPlan = (token: string): UserPlan => {
 };
 
 export const getUserProfilePlan = (token: string): UserPlan => {
+  if (isSelfHosted()) return 'pro';
   const data = jwtDecode<Token>(token) || {};
   let plan = data['plan'] || 'free';
   if (plan === 'free') {
@@ -212,7 +213,7 @@ export const STORAGE_QUOTA_GRACE_BYTES = 10 * 1024 * 1024; // 10 MB grace
 
 export const getStoragePlanData = (token: string) => {
   const data = jwtDecode<Token>(token) || {};
-  const plan = data['plan'] || 'free';
+  const plan = isSelfHosted() ? 'pro' : data['plan'] || 'free';
   const usage = data['storage_usage_bytes'] || 0;
   const purchasedQuota = data['storage_purchased_bytes'] || 0;
   const runtimeConfig = getRuntimeConfig();

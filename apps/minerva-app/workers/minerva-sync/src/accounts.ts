@@ -18,12 +18,14 @@
 
 import { errorJson, json, readJson, type Env } from './http';
 import {
+  createArgon2idHash,
   createKoSyncUserkey,
   createPassphraseHash,
   isKoSyncUserkey,
   isLegacyPassphraseHash,
   md5Hex,
   MIN_PASSPHRASE_KDF_ITERATIONS,
+  MAX_PASSPHRASE_KDF_ITERATIONS,
   PASSPHRASE_KDF_ITERATIONS,
   safeEqual,
   verifyPassphrase,
@@ -38,8 +40,23 @@ import { mintToken } from './auth';
  */
 export const kdfIterations = (env: Env): number => {
   const configured = Number(env.PASSPHRASE_KDF_ITERATIONS ?? '');
-  if (!Number.isFinite(configured) || configured <= 0) return PASSPHRASE_KDF_ITERATIONS;
-  return Math.max(MIN_PASSPHRASE_KDF_ITERATIONS, Math.floor(configured));
+  const base =
+    !Number.isFinite(configured) || configured <= 0
+      ? PASSPHRASE_KDF_ITERATIONS
+      : Math.floor(configured);
+  return Math.min(MAX_PASSPHRASE_KDF_ITERATIONS, Math.max(MIN_PASSPHRASE_KDF_ITERATIONS, base));
+};
+
+/** Stretch a passphrase with Argon2id by default, or PBKDF2 if configured */
+export const hashPassphraseForAccount = async (passphrase: string, env: Env): Promise<string> => {
+  const algo = (env.HASH_ALGORITHM || 'argon2id').toLowerCase();
+  if (algo === 'pbkdf2') {
+    return await createPassphraseHash(passphrase, kdfIterations(env));
+  }
+  const m = Math.min(65536, Math.max(8, Number(env.ARGON2_MEMORY || 4096)));
+  const t = Math.min(10, Math.max(1, Number(env.ARGON2_PASSES || 1)));
+  const p = Math.min(4, Math.max(1, Number(env.ARGON2_PARALLELISM || 1)));
+  return createArgon2idHash(passphrase, { m, t, p });
 };
 
 /** Normalize an email for storage and lookup. */
@@ -53,6 +70,9 @@ export const MIN_PASSPHRASE_LENGTH = 8;
 
 export const isValidEmail = (email: string): boolean =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+
+export const isValidUsername = (username: string): boolean =>
+  /^[A-Za-z0-9._-]{3,64}$/.test(username);
 
 /**
  * The `passhash` value stored for an account that only exists on the KOSync
@@ -156,12 +176,31 @@ export const handleRegister = async (request: Request, env: Env): Promise<Respon
     password?: string;
     passhash?: string;
   }>(request);
-  const email = normalizeEmail(body?.email ?? '');
+  const rawIdentifier = (body?.username ?? body?.email ?? '').trim();
   const passphrase = body?.passphrase ?? body?.password ?? '';
   const suppliedHash = (body?.passhash ?? '').trim().toLowerCase();
 
-  if (!email) return errorJson('email is required', 400);
-  if (!isValidEmail(email)) return errorJson('Invalid email address', 400);
+  if (!rawIdentifier) return errorJson('email or username is required', 400);
+
+  const id = crypto.randomUUID();
+  let email: string;
+  let username: string;
+
+  if (rawIdentifier.includes('@')) {
+    email = normalizeEmail(rawIdentifier);
+    if (!isValidEmail(email)) return errorJson('Invalid email address', 400);
+    username = sanitizeUsername(body?.username) ?? deriveKoSyncUsername(email, id);
+  } else {
+    username = rawIdentifier;
+    if (!isValidUsername(username)) {
+      return errorJson(
+        'Username must be 3-64 characters and contain only letters, numbers, hyphens, dots, or underscores',
+        400,
+      );
+    }
+    email = normalizeEmail(body?.email ?? `${username.toLowerCase()}@minerva.local`);
+  }
+
   if (!passphrase && !suppliedHash) {
     return errorJson('email and passphrase are required', 400);
   }
@@ -190,33 +229,29 @@ export const handleRegister = async (request: Request, env: Env): Promise<Respon
   // the account already there is exactly the probe an enumeration uses.
   await recordRegistration(env, clientId);
 
-  const existing = await env.SYNC_DB.prepare('SELECT id FROM users WHERE email = ?')
-    .bind(email)
+  const existing = await env.SYNC_DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
+    .bind(email, username)
     .first<{ id: string }>();
   if (existing) return errorJson('An account with this email already exists', 409);
 
-  const id = crypto.randomUUID();
   // The passphrase is stretched with a per-account salt: a dump of the table
   // must not be enough to recover it, not even for a weak passphrase. A
   // pre-computed digest cannot be stretched (there is no passphrase to
   // stretch), so such an account keeps the digest it was given.
-  const passhash = suppliedHash || (await createPassphraseHash(passphrase, kdfIterations(env)));
+  const passhash = suppliedHash || (await hashPassphraseForAccount(passphrase, env));
   // The KOSync account key is the MD5 of the passphrase, salted so the stored
   // value is not the credential itself. A pre-computed digest does not carry
   // it, so the account keeps the native surface only.
   const userkey = passphrase
     ? await createKoSyncUserkey(await md5Hex(passphrase))
     : NO_KOSYNC_USERKEY;
-  // The username doubles as the KOSync account name, so it must be unique. The
-  // email prefix alone is not (see `deriveKoSyncUsername`).
-  const username = sanitizeUsername(body?.username) ?? deriveKoSyncUsername(email, id);
 
   try {
     await env.SYNC_DB.prepare(
       `INSERT INTO users (id, email, username, passhash, userkey, plan)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-      .bind(id, email, username, passhash, userkey, 'free')
+      .bind(id, email, username, passhash, userkey, 'pro')
       .run();
   } catch (error) {
     // D1 rejects a duplicate email or username with a UNIQUE violation. That
@@ -228,8 +263,8 @@ export const handleRegister = async (request: Request, env: Env): Promise<Respon
     throw error;
   }
 
-  const token = await mintToken(env.JWT_SECRET, { userId: id, email });
-  return json({ token, user: { id, email } }, 201);
+  const token = await mintToken(env.JWT_SECRET, { userId: id, email, plan: 'pro' });
+  return json({ token, user: { id, email, username } }, 201);
 };
 
 /**
@@ -450,23 +485,26 @@ export const recordRegistration = async (env: Env, clientId: string): Promise<vo
 export const handleLogin = async (request: Request, env: Env): Promise<Response> => {
   const body = await readJson<{
     email?: string;
+    username?: string;
     passphrase?: string;
     password?: string;
     passhash?: string;
   }>(request);
-  const email = normalizeEmail(body?.email ?? '');
+  const rawIdentifier = (body?.username ?? body?.email ?? '').trim();
   const passphrase = body?.passphrase ?? body?.password ?? '';
   const suppliedHash = (body?.passhash ?? '').trim().toLowerCase();
 
-  if (!email || (!passphrase && !suppliedHash)) {
+  if (!rawIdentifier || (!passphrase && !suppliedHash)) {
     return errorJson('email and passphrase are required', 400);
   }
-  // The email is the KEY of the throttle counter (`login_attempts.email`),
-  // and this route is unauthenticated: without the format check a caller
-  // would write one row per request, with a key of any size it chose. The
-  // registration and the email-change routes already validate it.
-  if (!isValidEmail(email)) {
+
+  const identifier = rawIdentifier.toLowerCase();
+  const isEmail = identifier.includes('@');
+  if (isEmail && !isValidEmail(identifier)) {
     return errorJson('Invalid email address', 400);
+  }
+  if (!isEmail && !isValidUsername(identifier)) {
+    return errorJson('Invalid username format', 400);
   }
   if (suppliedHash && !/^[0-9a-f]{64}$/.test(suppliedHash)) {
     return errorJson('passhash must be a SHA-256 digest, hex encoded', 400);
@@ -476,17 +514,19 @@ export const handleLogin = async (request: Request, env: Env): Promise<Response>
   }
 
   // Too many failed attempts: refuse before touching the credential at all.
-  if (await isLockedOut(env, email)) {
+  if (await isLockedOut(env, identifier)) {
     return errorJson('Too many failed sign-in attempts. Try again later.', 429);
   }
 
+  const synthEmail = isEmail ? identifier : `${identifier}@minerva.local`;
   const row = await env.SYNC_DB.prepare(
-    'SELECT id, email, passhash, userkey, plan, storage_usage_bytes, storage_purchased_bytes FROM users WHERE email = ?',
+    'SELECT id, email, username, passhash, userkey, plan, storage_usage_bytes, storage_purchased_bytes FROM users WHERE email = ? OR username = ? OR email = ?',
   )
-    .bind(email)
+    .bind(identifier, identifier, synthEmail)
     .first<{
       id: string;
       email: string;
+      username: string;
       passhash: string;
       userkey: string;
       plan: string;
@@ -496,7 +536,7 @@ export const handleLogin = async (request: Request, env: Env): Promise<Response>
   if (!row) {
     // An unknown account and a wrong passphrase must look alike, but the
     // attempt is still counted so a script cannot probe an address forever.
-    await recordFailedAttempt(env, email);
+    await recordFailedAttempt(env, identifier);
     return errorJson('Invalid credentials', 401);
   }
 
@@ -507,11 +547,14 @@ export const handleLogin = async (request: Request, env: Env): Promise<Response>
     ? safeEqual(suppliedHash, row.passhash)
     : await verifyPassphrase(passphrase, row.passhash);
   if (!accepted) {
-    await recordFailedAttempt(env, email);
+    await recordFailedAttempt(env, identifier);
     return errorJson('Invalid credentials', 401);
   }
 
-  await clearFailedAttempts(env, email);
+  await clearFailedAttempts(env, identifier);
+  if (row.email && row.email !== identifier) await clearFailedAttempts(env, row.email);
+  if (row.username && row.username !== identifier) await clearFailedAttempts(env, row.username);
+
   if (!suppliedHash) await upgradeLegacyCredentials(env, row, passphrase);
   const token = await mintToken(env.JWT_SECRET, {
     userId: row.id,
@@ -520,7 +563,7 @@ export const handleLogin = async (request: Request, env: Env): Promise<Response>
     storageUsageBytes: row.storage_usage_bytes,
     storagePurchasedBytes: row.storage_purchased_bytes,
   });
-  return json({ token, user: { id: row.id, email: row.email } });
+  return json({ token, user: { id: row.id, email: row.email, username: row.username } });
 };
 
 /**
@@ -540,9 +583,7 @@ const upgradeLegacyCredentials = async (
   const stretched = isLegacyPassphraseHash(row.passhash);
   const salted = !isKoSyncUserkey(row.userkey) && /^[0-9a-f]{32}$/.test(row.userkey);
   if (!stretched && !salted) return;
-  const passhash = stretched
-    ? await createPassphraseHash(passphrase, kdfIterations(env))
-    : row.passhash;
+  const passhash = stretched ? await hashPassphraseForAccount(passphrase, env) : row.passhash;
   const userkey = salted ? await createKoSyncUserkey(await md5Hex(passphrase)) : row.userkey;
   await env.SYNC_DB.prepare('UPDATE users SET passhash = ?, userkey = ? WHERE id = ?')
     .bind(passhash, userkey, row.id)
@@ -556,11 +597,11 @@ const upgradeLegacyCredentials = async (
  * separate identity provider.
  */
 export const handleMe = async (env: Env, userId: string): Promise<Response> => {
-  const row = await env.SYNC_DB.prepare('SELECT id, email, plan FROM users WHERE id = ?')
+  const row = await env.SYNC_DB.prepare('SELECT id, email, username, plan FROM users WHERE id = ?')
     .bind(userId)
-    .first<{ id: string; email: string; plan: string }>();
+    .first<{ id: string; email: string; username: string; plan: string }>();
   if (!row) return errorJson('Not authenticated', 403);
-  return json({ user: { id: row.id, email: row.email }, plan: row.plan });
+  return json({ user: { id: row.id, email: row.email, username: row.username }, plan: row.plan });
 };
 
 /**

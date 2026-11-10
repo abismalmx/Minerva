@@ -21,6 +21,7 @@ import { isHexColor } from '@/app/reader/utils/headerFooterStyle';
 import { SettingsPanelPanelProp } from './SettingsDialog';
 import {
   BoxedList,
+  PanelHeader,
   SettingLabel,
   SettingsRow,
   SettingsSelect,
@@ -541,6 +542,10 @@ const LayoutPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRese
 
   return (
     <div className='my-4 w-full space-y-6'>
+      <PanelHeader
+        title={_('Layout')}
+        description={_('Decide how pages are laid out and how the reader is arranged.')}
+      />
       <div
         data-setting-id='settings.layout.overrideBookLayout'
         className='flex items-center justify-between px-4'

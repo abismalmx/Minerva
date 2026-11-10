@@ -25,6 +25,7 @@ import { getAPIBaseUrl, getCustomBackendUrl } from '@/services/environment';
 export interface SelfHostedUser {
   id: string;
   email: string;
+  username?: string;
 }
 
 export interface SelfHostedSession {
@@ -83,12 +84,16 @@ const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
 
 /** Register a new account. */
 export const selfHostedRegister = async (
-  email: string,
+  emailOrUsername: string,
   passphrase: string,
 ): Promise<SelfHostedSession> => {
+  const isEmail = emailOrUsername.includes('@');
+  const payload = isEmail
+    ? { email: emailOrUsername, passphrase }
+    : { username: emailOrUsername, passphrase };
   const body = await request<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, passphrase }),
+    body: JSON.stringify(payload),
   });
   if (!body.token || !body.user) throw new Error('The server did not return an account');
   return { access_token: body.token, refresh_token: body.token, user: body.user };
@@ -96,12 +101,16 @@ export const selfHostedRegister = async (
 
 /** Sign in with an existing account. */
 export const selfHostedLogin = async (
-  email: string,
+  emailOrUsername: string,
   passphrase: string,
 ): Promise<SelfHostedSession> => {
+  const isEmail = emailOrUsername.includes('@');
+  const payload = isEmail
+    ? { email: emailOrUsername, passphrase }
+    : { username: emailOrUsername, passphrase };
   const body = await request<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, passphrase }),
+    body: JSON.stringify(payload),
   });
   if (!body.token || !body.user) throw new Error('The server did not return a session');
   return { access_token: body.token, refresh_token: body.token, user: body.user };

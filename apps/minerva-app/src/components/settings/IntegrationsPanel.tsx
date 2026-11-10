@@ -7,7 +7,7 @@ import { useKeyDownActions } from '@/hooks/useKeyDownActions';
 import { useSettingsStore } from '@/store/settingsStore';
 import { getCustomBackendUrl } from '@/services/environment';
 import CloudflareAssistantForm from './integrations/CloudflareAssistantForm';
-import { SectionTitle, SettingLabel } from './primitives';
+import { PanelHeader, SectionTitle, SettingLabel } from './primitives';
 
 type SubPage = 'minerva-cloud' | null;
 
@@ -72,12 +72,10 @@ const IntegrationsPanel: React.FC = () => {
 
   return (
     <div className='my-4 w-full space-y-6'>
-      <div className='w-full px-4'>
-        <h2 className='mb-1.5 text-lg font-semibold tracking-tight'>{_('Integrations')}</h2>
-        <p className='text-base-content/70 text-sm leading-relaxed'>
-          {_('Connect Minerva to external services for sync, highlights, and catalogs.')}
-        </p>
-      </div>
+      <PanelHeader
+        title={_('Integrations')}
+        description={_('Connect Minerva to external services for sync, highlights, and catalogs.')}
+      />
 
       <div className='w-full' data-setting-id='settings.integrations.cloudSync'>
         <SectionTitle className='mb-2'>{_('Cloud Sync')}</SectionTitle>

@@ -87,9 +87,10 @@ export async function deleteBook(
   if ((deleteAction === 'cloud' || deleteAction === 'both') && book.uploadedAt) {
     const fps = [getRemoteBookFilename(book), getCoverFilename(book)];
     for (const fp of fps) {
+      if (!fp) continue;
       const cfp = `${CLOUD_BOOKS_SUBDIR}/${fp}`;
       try {
-        deleteCloudFile(cfp);
+        await deleteCloudFile(cfp, book.hash);
       } catch (error) {
         console.log('Failed to delete uploaded file:', error);
       }

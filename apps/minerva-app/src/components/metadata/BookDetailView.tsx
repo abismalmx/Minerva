@@ -35,6 +35,8 @@ import {
 import { isFeedBook } from '@/services/rss/feedBookUrl';
 import { saveSysSettings } from '@/helpers/settings';
 import BookCover from '@/components/BookCover';
+import { BookFolio, BookSpine } from '@/app/library/components/BookSpine';
+import { getProgressPercentage } from '@/app/library/utils/libraryUtils';
 import BookCoverViewer, { useBookCoverViewer } from '@/components/BookCoverViewer';
 import Dropdown from '../Dropdown';
 import MenuItem from '../MenuItem';
@@ -84,6 +86,10 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
   const { coverSrc, openCoverViewer, closeCoverViewer } = useBookCoverViewer(book);
   const subjects = getContributorNames(metadata?.subject);
   const visibleSubjects = subjectsExpanded ? subjects : subjects.slice(0, 3);
+  // The folio and the reading percentage: the two figures that say where the
+  // reader stopped.
+  const progressPercentage = getProgressPercentage(book);
+  const hasFolio = !!book.progress || book.readingStatus === 'finished';
 
   const renderMetadataChip = (type: 'tag' | 'subject', value: string) => {
     const className = 'badge badge-outline h-auto min-h-6 whitespace-normal px-2 py-1 text-xs';
@@ -132,17 +138,30 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
           className='me-6 aspect-[28/41] h-32 shadow-lg sm:me-10'
           onClick={openCoverViewer}
         >
-          <BookCover mode='list' book={book} showSpine={skeuomorphicCovers} />
+          <div className='relative h-full w-full'>
+            <BookCover mode='list' book={book} showSpine={skeuomorphicCovers} />
+            {/* El lomo: the reading progress along the book's own binding. */}
+            {!skeuomorphicCovers && <BookSpine book={book} />}
+          </div>
         </button>
         {coverSrc && <BookCoverViewer src={coverSrc} onClose={closeCoverViewer} />}
         <div className='title-author flex h-32 flex-col justify-between'>
           <div>
-            <p className='text-base-content mb-2 line-clamp-2 break-words text-lg font-bold'>
+            <p className='font-display text-base-content mb-2 line-clamp-2 break-words text-lg leading-snug font-medium tracking-tight'>
               {formatTitle(book.title).replace(/\u00A0/g, ' ') || _('Untitled')}
             </p>
             <p className='text-neutral-content line-clamp-1'>
               {formatAuthors(book.author, book.primaryLanguage) || _('Unknown')}
             </p>
+            {/* The folio: where the reader stopped, printed as a figure. */}
+            {hasFolio && (
+              <p className='text-neutral-content/80 mt-1.5 flex items-center gap-2 text-xs'>
+                <BookFolio book={book} />
+                {progressPercentage !== null && !Number.isNaN(progressPercentage) && (
+                  <span>{progressPercentage}%</span>
+                )}
+              </p>
+            )}
           </div>
           <div className='flex flex-nowrap items-center gap-3 sm:gap-x-4'>
             {onEdit && (
@@ -289,7 +308,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
           </button>
           {!settings.metadataOthersCollapsed && (
             <div className='px-4 py-1'>
-              <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+              <div className='grid grid-cols-2 gap-4'>
                 <div className='overflow-hidden'>
                   <span className='font-bold'>{_('Publisher')}</span>
                   <p className='text-neutral-content text-sm'>
@@ -322,7 +341,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                 </div>
                 <div className='overflow-hidden'>
                   <span className='font-bold'>{_('File Size')}</span>
-                  <p className='text-neutral-content text-sm'>
+                  <p className='text-neutral-content minerva-folio text-sm'>
                     {formatBytes(fileSize) || _('Unknown')}
                   </p>
                 </div>
@@ -335,7 +354,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                 */}
                 <div className='overflow-hidden pe-1 text-end sm:text-start'>
                   <span className='font-bold'>{_('Pages')}</span>
-                  <p className='text-neutral-content text-sm'>
+                  <p className='text-neutral-content minerva-folio text-sm'>
                     {getBookPageCount(book) || _('Unknown')}
                   </p>
                 </div>
@@ -373,7 +392,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                   and tell apart in-place vs hash-copy imports at a glance.
                 */}
                 {book.filePath && (
-                  <div className='col-span-2 overflow-hidden sm:col-span-3'>
+                  <div className='col-span-2 overflow-hidden'>
                     <span className='font-bold'>{_('File Path')}</span>
                     <p className='text-neutral-content text-sm break-all' title={book.filePath}>
                       {book.filePath}
@@ -385,7 +404,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                   the section: leaving them mid-grid pushed every following cell
                   onto a fresh row and left holes in the two-column layout.
                 */}
-                <div className='col-span-2 overflow-hidden sm:col-span-3'>
+                <div className='col-span-2 overflow-hidden'>
                   <div className='flex items-center gap-1'>
                     <span className='font-bold'>{_('Subjects')}</span>
                     {subjects.length > 3 && (
@@ -405,7 +424,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                       : _('Unknown')}
                   </div>
                 </div>
-                <div className='col-span-2 overflow-hidden sm:col-span-3'>
+                <div className='col-span-2 overflow-hidden'>
                   <span className='font-bold'>{_('Tags')}</span>
                   <div className='mt-1 flex flex-wrap gap-1'>
                     {book.tags?.length
@@ -436,7 +455,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
           </button>
           {!settings.metadataSeriesCollapsed && (
             <div className='px-4 py-1'>
-              <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+              <div className='grid grid-cols-2 gap-4'>
                 <div className='overflow-hidden sm:col-span-2'>
                   <span className='font-bold'>{_('Series')}</span>
                   <p className='text-neutral-content text-sm'>{metadata?.series || _('Unknown')}</p>

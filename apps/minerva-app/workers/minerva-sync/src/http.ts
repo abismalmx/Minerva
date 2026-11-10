@@ -36,6 +36,14 @@ export interface Env {
    * invalidates the accounts that already exist.
    */
   PASSPHRASE_KDF_ITERATIONS?: string;
+  /** Passphrase hashing algorithm ('argon2id' or 'pbkdf2'). Defaults to 'argon2id'. */
+  HASH_ALGORITHM?: string;
+  /** Memory size for Argon2id in KiB (default: 4096 = 4 MiB for serverless limits). */
+  ARGON2_MEMORY?: string;
+  /** Number of passes for Argon2id (default: 1). */
+  ARGON2_PASSES?: string;
+  /** Parallelism lanes for Argon2id (default: 1). */
+  ARGON2_PARALLELISM?: string;
 }
 
 export const json = (body: unknown, status = 200, headers: HeadersInit = {}): Response =>

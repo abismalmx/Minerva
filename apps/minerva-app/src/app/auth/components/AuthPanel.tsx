@@ -36,12 +36,31 @@ export default function AuthPanel({
   };
 
   return (
-    <div className='flex w-full max-w-sm flex-col items-center gap-6'>
-      <div className='flex flex-col items-center gap-3 text-center'>
-        <Image src='/icon.png' alt='' width={56} height={56} className='eink-bordered rounded-xl' />
+    <div className='relative flex w-full max-w-sm flex-col items-center gap-6'>
+      <div className='flex flex-col items-center gap-4 text-center'>
+        {/* The emblem on a halftone plate: the print motif of the identity,
+            so the entrance of the product already looks like a cover. */}
+        <div className='relative flex size-24 items-center justify-center'>
+          <div
+            className='minerva-halftone bg-base-200/70 absolute inset-0 rounded-2xl'
+            aria-hidden='true'
+          />
+          <Image
+            src='/icon.png'
+            alt=''
+            role='presentation'
+            width={64}
+            height={64}
+            className='eink-bordered relative rounded-xl'
+          />
+        </div>
         <div>
-          <h1 className='text-xl font-semibold tracking-tight'>{_('Sign in to Minerva')}</h1>
-          <p className='text-base-content/70 mt-1.5 text-sm leading-relaxed'>
+          {/* The display face carries the brand voice: the entrance of the
+              product says its name in its own lettering. */}
+          <h1 className='font-display text-3xl leading-tight font-medium tracking-tight'>
+            {_('Sign in to Minerva')}
+          </h1>
+          <p className='text-base-content/70 mt-2 text-sm leading-relaxed'>
             {_('Sync your library, reading progress, and highlights across your devices.')}
           </p>
         </div>

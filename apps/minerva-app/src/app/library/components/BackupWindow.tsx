@@ -203,7 +203,7 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
                   type='checkbox'
                   checked={includeCredentials}
                   onChange={(e) => setIncludeCredentials(e.target.checked)}
-                  className='checkbox checkbox-sm mt-0.5 shrink-0'
+                  className='checkbox checkbox-xl mt-0.5 shrink-0'
                 />
                 <span className='text-base-content/70 text-sm'>
                   {_(

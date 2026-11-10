@@ -9,8 +9,11 @@ declare global {
   }
 }
 
-export const isTauriAppPlatform = () => process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'tauri';
-export const isWebAppPlatform = () => process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'web';
+export const isTauriAppPlatform = () =>
+  process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'tauri' &&
+  typeof window !== 'undefined' &&
+  Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
+export const isWebAppPlatform = () => !isTauriAppPlatform();
 export const hasCli = () => window.__MINERVA_CLI_ACCESS === true;
 export const isPWA = () => window.matchMedia('(display-mode: standalone)').matches;
 
@@ -107,12 +110,29 @@ export const isMacPlatform = () =>
 
 export const getCommandPaletteShortcut = () => (isMacPlatform() ? '⌘⇧P' : 'Ctrl+Shift+P');
 
-const isWebDevMode = () => process.env['NODE_ENV'] === 'development' && isWebAppPlatform();
+const isWebDevMode = () => {
+  if (getCustomBackendUrl()) return false;
+  const config = getRuntimeConfig();
+  if (config?.selfHostedBackend || config?.apiBaseUrl) return false;
+  if (
+    process.env['SELF_HOSTED_BACKEND'] === 'true' ||
+    process.env['NEXT_PUBLIC_SELF_HOSTED_BACKEND'] === 'true' ||
+    process.env['API_BASE_URL'] ||
+    process.env['NEXT_PUBLIC_API_BASE_URL']
+  ) {
+    return false;
+  }
+  return process.env['NODE_ENV'] === 'development' && isWebAppPlatform();
+};
 
 // Dev API only in development mode and web platform
 // with command `pnpm dev-web`
 // for production build or tauri app use the production Web API
-export const getAPIBaseUrl = () => (isWebDevMode() ? '/api' : `${getBaseUrl()}/api`);
+export const getAPIBaseUrl = () => {
+  if (isWebDevMode()) return '/api';
+  const base = getBaseUrl().replace(/\/+$/, '');
+  return base.endsWith('/api') ? base : `${base}/api`;
+};
 
 // Minerva Voice synthesizes on the production GPU service, which a local dev
 // server cannot reach: its routes use the production Web API even under

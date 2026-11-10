@@ -7,36 +7,38 @@ interface StatusBadgeProps {
   className?: string;
 }
 
+/**
+ * The status badge.
+ *
+ * A badge is a fixed-height chip: one size, one radius, and the semantic
+ * colour carried by a translucent fill plus an inset ring at ~25 % — never a
+ * filled block of colour. The label stays dark enough to read on the paper
+ * (the colour marks the state, it does not replace the text), and the brand
+ * accent is never used here: the meaning of a colour has to stay stable.
+ *
+ * The text is the only thing inside the badge — the state is carried by the
+ * colour, so a screen reader reads "Finished", not "Finished green".
+ */
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status, children, className }) => {
   if (status !== 'finished' && status !== 'unread' && status !== 'abandoned') return null;
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center justify-center',
-        'rounded-[1px] px-0.5',
-        'text-[8px] font-bold uppercase leading-none tracking-wider',
-        'h-3.5',
-        status === 'finished' && 'status-badge-finished',
-        status === 'unread' && 'status-badge-unread',
-        status === 'abandoned' && 'status-badge-abandoned',
-        // finished: green/emerald
-        status === 'finished' && 'bg-emerald-100 dark:bg-emerald-900/90',
-        status === 'finished' && 'border border-emerald-300/50 dark:border-emerald-700/50',
-        status === 'finished' && 'text-emerald-700 dark:text-emerald-300',
-        // unread: pastel yellow/amber
-        status === 'unread' && 'bg-amber-100 dark:bg-amber-900/80',
-        status === 'unread' && 'border border-amber-300/50 dark:border-amber-700/50',
-        status === 'unread' && 'text-amber-700 dark:text-amber-300',
-        // abandoned / on hold: slate
-        status === 'abandoned' && 'bg-slate-100 dark:bg-slate-800/80',
-        status === 'abandoned' && 'border border-slate-300/50 dark:border-slate-600/50',
-        status === 'abandoned' && 'text-slate-700 dark:text-slate-300',
+        'inline-flex h-4 items-center justify-center rounded-sm px-1',
+        'text-[10px] font-medium uppercase leading-none tracking-wide',
+        status === 'finished' &&
+          'bg-emerald-500/10 text-emerald-700 ring-emerald-600/25 dark:text-emerald-300 dark:bg-emerald-400/15 dark:ring-emerald-300/30',
+        status === 'unread' &&
+          'bg-amber-500/10 text-amber-700 ring-amber-600/25 dark:text-amber-300 dark:bg-amber-400/15 dark:ring-amber-300/30',
+        status === 'abandoned' &&
+          'bg-slate-500/10 text-slate-600 ring-slate-600/25 dark:text-slate-300 dark:bg-slate-400/15 dark:ring-slate-300/30',
+        'ring-1 ring-inset',
         className,
       )}
       role='status'
     >
-      <span className='relative top-[0.5px]'>{children}</span>
+      {children}
     </span>
   );
 };

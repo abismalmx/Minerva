@@ -4,6 +4,7 @@ import { FiCopy } from 'react-icons/fi';
 import { FiLink } from 'react-icons/fi';
 import { FiShare } from 'react-icons/fi';
 import { FiImage } from 'react-icons/fi';
+import { LuImagePlus } from 'react-icons/lu';
 import { PiHighlighterFill, PiSparkleFill } from 'react-icons/pi';
 import { LuBookA } from 'react-icons/lu';
 import { BsPencilSquare } from 'react-icons/bs';
@@ -63,6 +64,13 @@ export const annotationToolButtons = createAnnotationToolButtons([
     label: _('Annotate'),
     tooltip: _('Annotate text after selection'),
     Icon: BsPencilSquare,
+  },
+  {
+    type: 'image',
+    label: _('Photo'),
+    tooltip: _('Search photo or attach image'),
+    Icon: LuImagePlus,
+    quickAction: true,
   },
   {
     type: 'search',

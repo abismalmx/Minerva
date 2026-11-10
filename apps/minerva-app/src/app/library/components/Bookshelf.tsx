@@ -28,6 +28,7 @@ import {
   expandBookshelfSelection,
   getCommonGroupName,
   findSelectedManualGroup,
+  getProgressPercentage,
   resolveCurrentShelfBooks,
   selectAbsOfflineBooks,
   selectDownloadableBooks,
@@ -67,6 +68,7 @@ import TaggingModal from './TaggingModal';
 import SetStatusAlert from './SetStatusAlert';
 import { useOpenBook } from '../hooks/useOpenBook';
 import LibrarySearchResults from './LibrarySearchResults';
+import ContinueReadingHero from './ContinueReadingHero';
 
 export interface ContentSearchRequest {
   query: string;
@@ -977,6 +979,34 @@ const Bookshelf: React.FC<BookshelfProps> = ({
     ],
   );
   const lastShelf = sections.at(-1)?.definition;
+  // The book the library opens on: the one being read, most recently touched.
+  // The poster only stands on the default shelf of an unfiltered library — a
+  // search, a group or a named shelf is a view over the collection, not a
+  // place to advertise one book.
+  const continueReadingBook = useMemo(() => {
+    if (queryTerm || contentSearch?.query.trim() || groupId || shelfId || isSelectMode) return null;
+    const candidates = visibleBooks.filter((book) => {
+      if (book.readingStatus !== 'reading') return false;
+      const percentage = getProgressPercentage(book);
+      return percentage !== null && percentage > 0 && percentage < 100;
+    });
+    if (!candidates.length) return null;
+    return candidates.reduce((latest, book) =>
+      (book.updatedAt ?? 0) > (latest.updatedAt ?? 0) ? book : latest,
+    );
+  }, [queryTerm, contentSearch?.query, groupId, shelfId, isSelectMode, visibleBooks]);
+  const openBookRef = useRef(openBook);
+  openBookRef.current = openBook;
+  const handleOpenFromPoster = useCallback((book: Book) => {
+    void openBookRef.current(book);
+  }, []);
+  const poster = useMemo(
+    () =>
+      continueReadingBook ? (
+        <ContinueReadingHero book={continueReadingBook} onOpen={handleOpenFromPoster} />
+      ) : undefined,
+    [continueReadingBook, handleOpenFromPoster],
+  );
   const importTile =
     visibleBooks.length > 0 && lastShelf?.layout === 'grid' ? (
       <div
@@ -992,12 +1022,15 @@ const Bookshelf: React.FC<BookshelfProps> = ({
           aria-label={_('Import Books')}
           aria-haspopup='menu'
           className={clsx(
-            'bookitem-main eink-bordered bg-base-100/50 hover:bg-base-300/50 flex aspect-28/41 w-full items-center justify-center rounded-sm',
+            'bookitem-main eink-bordered border-base-content/20 border-dashed bg-base-100/40',
+            'hover:border-base-content/35 hover:bg-base-300/40 flex aspect-28/41 w-full items-center justify-center rounded-sm',
             'focus-visible:ring-base-content/15 focus-visible:outline-hidden focus-visible:ring-2',
           )}
           onClick={(event) => handleImportBooks(event.currentTarget)}
         >
-          <PiPlus aria-hidden className='text-base-content/60 size-10' />
+          <span className='border-base-content/20 text-base-content/50 flex size-11 items-center justify-center rounded-full border border-dashed'>
+            <PiPlus aria-hidden className='size-5' />
+          </span>
         </button>
       </div>
     ) : undefined;
@@ -1061,6 +1094,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
             }
             pageDurations={pageDurations}
             sections={sections}
+            header={poster}
             autoColumns={settings.libraryAutoColumns}
             fixedColumns={settings.libraryColumns}
             footerHeight={footerHeight}

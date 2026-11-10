@@ -74,3 +74,14 @@ apps/minerva.koplugin/native/localsend-bin/target/
 
 # scripts/tauri.mjs parks the wry Cargo.lock here during a Linux CEF build
 /Cargo.lock.wry
+
+# Package binaries and bundles
+*.appimage
+*.AppImage
+*.apk
+*.aab
+*.ipa
+dist/
+squashfs-root/
+.wrangler/
+

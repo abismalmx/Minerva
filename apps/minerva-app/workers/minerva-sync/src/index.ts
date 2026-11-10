@@ -27,9 +27,6 @@ export default {
       }
       return withCors(request, env, response);
     } catch (error) {
-      // The details stay in the log: the client gets a generic message, so a
-      // failure never leaks the schema, the table names or the internals of
-      // the backend.
       console.error('unhandled error', error);
       return withCors(request, env, errorJson('Internal Server Error', 500));
     }

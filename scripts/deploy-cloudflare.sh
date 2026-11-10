@@ -181,12 +181,22 @@ cd "$WORKER_DIR"
 # un bloque `[[routes]]` para un dominio propio — y un redespliegue no debe
 # resetearlo en silencio. Por eso el fichero se parchea en lugar de reescribirse.
 if [ -f wrangler.toml ]; then
-  sed -i \
-    -e "s|^name = .*|name = \"$WORKER_NAME\"|" \
-    -e "s|^bucket_name = .*|bucket_name = \"$TARGET_BUCKET_NAME\"|" \
-    -e "s|^database_name = .*|database_name = \"$TARGET_DB_NAME\"|" \
-    -e "s|^database_id = .*|database_id = \"$DB_UUID\"|" \
-    wrangler.toml
+  node -e '
+    const fs = require("fs");
+    let toml = fs.readFileSync("wrangler.toml", "utf8");
+    toml = toml.replace(/^name = .*/m, `name = "${process.argv[1]}"`);
+    toml = toml.replace(/^bucket_name = .*/m, `bucket_name = "${process.argv[2]}"`);
+    toml = toml.replace(/^database_name = .*/m, `database_name = "${process.argv[3]}"`);
+    toml = toml.replace(/^database_id = .*/m, `database_id = "${process.argv[4]}"`);
+    if (!toml.includes("HASH_ALGORITHM")) {
+      if (toml.includes("[vars]")) {
+        toml = toml.replace("[vars]", "[vars]\nHASH_ALGORITHM = \"argon2id\"\nARGON2_MEMORY = \"4096\"\nARGON2_PASSES = \"1\"\nARGON2_PARALLELISM = \"1\"");
+      } else {
+        toml += "\n[vars]\nHASH_ALGORITHM = \"argon2id\"\nARGON2_MEMORY = \"4096\"\nARGON2_PASSES = \"1\"\nARGON2_PARALLELISM = \"1\"\n";
+      }
+    }
+    fs.writeFileSync("wrangler.toml", toml);
+  ' "$WORKER_NAME" "$TARGET_BUCKET_NAME" "$TARGET_DB_NAME" "$DB_UUID"
 else
 cat > wrangler.toml <<EOF
 name = "$WORKER_NAME"
@@ -209,9 +219,12 @@ database_id = "$DB_UUID"
 ALLOWED_ORIGINS = "*"
 MAX_UPLOAD_BYTES = "104857600"
 STORAGE_FIXED_QUOTA = "0"
-# El coste del KDF lo paga cada alta y cada inicio de sesión. Un despliegue con
-# un presupuesto de CPU ajustado puede bajarlo con PASSPHRASE_KDF_ITERATIONS.
-PASSPHRASE_KDF_ITERATIONS = "600000"
+# Parámetros criptográficos recomendados (Argon2id con fallback seguro)
+PASSPHRASE_KDF_ITERATIONS = "100000"
+HASH_ALGORITHM = "argon2id"
+ARGON2_MEMORY = "4096"
+ARGON2_PASSES = "1"
+ARGON2_PARALLELISM = "1"
 
 [observability]
 enabled = true
@@ -280,14 +293,29 @@ else
   # Actualizar o generar .env.local para desarrollo local si el directorio existe
   if [ -d "$APP_DIR" ]; then
     ENV_LOCAL="$APP_DIR/.env.local"
-    if [ ! -f "$ENV_LOCAL" ]; then
-      cat > "$ENV_LOCAL" <<EOF
-NEXT_PUBLIC_API_BASE_URL=$DEPLOYED_URL
-SELF_HOSTED_BACKEND=true
-NEXT_PUBLIC_SELF_HOSTED_BACKEND=true
-EOF
-      echo -e "${GREEN}✓ Creado ${APP_DIR#"$REPO_ROOT/"}/.env.local con la URL del Worker.${NC}"
-    fi
+    node -e '
+      const fs = require("fs");
+      const envPath = process.argv[1];
+      const url = process.argv[2];
+      let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+      const vars = {
+        NEXT_PUBLIC_API_BASE_URL: url,
+        SELF_HOSTED_BACKEND: "true",
+        NEXT_PUBLIC_SELF_HOSTED_BACKEND: "true",
+        SELF_HOSTED: "true",
+        NEXT_PUBLIC_SELF_HOSTED: "true"
+      };
+      for (const [k, v] of Object.entries(vars)) {
+        const regex = new RegExp(`^${k}=.*`, "m");
+        if (regex.test(content)) {
+          content = content.replace(regex, `${k}=${v}`);
+        } else {
+          content = content.trimEnd() + (content.length ? "\n" : "") + `${k}=${v}\n`;
+        }
+      }
+      fs.writeFileSync(envPath, content.trim() + "\n");
+    ' "$ENV_LOCAL" "$DEPLOYED_URL"
+    echo -e "${GREEN}✓ Sincronizado ${APP_DIR#"$REPO_ROOT/"}/.env.local con la URL del Worker y flags Self-Hosted.${NC}"
   fi
 fi
 

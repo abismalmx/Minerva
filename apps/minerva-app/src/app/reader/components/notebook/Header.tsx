@@ -26,7 +26,7 @@ const NotebookHeader: React.FC<{
           title={isPinned ? _('Unpin Notebook') : _('Pin Notebook')}
           onClick={handleTogglePin}
           className={clsx(
-            'btn btn-ghost btn-circle hidden h-6 min-h-6 w-6 sm:flex',
+            'btn btn-ghost btn-circle hidden h-8 min-h-8 w-8 sm:flex',
             isPinned ? 'bg-base-300' : 'bg-base-300/65',
           )}
         >

@@ -193,7 +193,10 @@ const PageJumpInput: React.FC<PageJumpInputProps> = ({
   return (
     <div
       className={clsx(
-        'relative flex items-center rounded-md text-nowrap tabular-nums transition-colors',
+        'relative flex min-h-8 items-center rounded-md text-nowrap tabular-nums transition-colors',
+        // The page readout is a figure, not prose: a mono face keeps the
+        // digits from dancing as the page turns.
+        'font-mono',
         editing
           ? 'eink-bordered bg-base-content/10'
           : 'hover:bg-base-content/10 cursor-pointer bg-transparent',

@@ -1012,7 +1012,7 @@ export default function BookshelvesDialog() {
             type='button'
             aria-label={_('Close')}
             onClick={() => void close()}
-            className='btn btn-ghost btn-circle my-1.5 flex h-8 min-h-8 w-8 shrink-0 hover:bg-transparent focus:outline-hidden sm:hidden'
+            className='btn btn-ghost btn-circle my-1.5 flex h-9 min-h-9 w-9 shrink-0 hover:bg-transparent focus:outline-hidden sm:hidden'
           >
             {isRtl ? <MdArrowForwardIos size={22} /> : <MdArrowBackIosNew size={22} />}
           </button>
@@ -1021,7 +1021,7 @@ export default function BookshelvesDialog() {
             type='button'
             aria-label={_('Close')}
             onClick={() => void close()}
-            className='bg-base-300/65 btn btn-ghost btn-circle mt-[1.125rem] hidden h-6 min-h-6 w-6 shrink-0 focus:outline-hidden sm:flex'
+            className='bg-base-300/65 btn btn-ghost btn-circle mt-[1.125rem] hidden h-9 min-h-9 w-9 shrink-0 focus:outline-hidden sm:flex'
           >
             <MdClose aria-hidden className='h-4 w-4' />
           </button>

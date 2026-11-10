@@ -169,7 +169,13 @@ export const transformBookFromDB = (dbBook: DBBook): Book => {
     createdAt: new Date(created_at!).getTime(),
     updatedAt: new Date(updated_at!).getTime(),
     deletedAt: deleted_at ? new Date(deleted_at).getTime() : null,
-    uploadedAt: uploaded_at ? new Date(uploaded_at).getTime() : null,
+    uploadedAt: uploaded_at
+      ? typeof uploaded_at === 'number'
+        ? uploaded_at
+        : !isNaN(Number(uploaded_at))
+          ? Number(uploaded_at)
+          : new Date(uploaded_at).getTime()
+      : null,
   };
   // Only when set: an undefined key would wipe the local count in the pull
   // merge's `{ ...local, ...remote }` spread.

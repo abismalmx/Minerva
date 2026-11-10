@@ -412,7 +412,7 @@ const TTSPlayerSheet = ({
         type='button'
         aria-label={_('Close')}
         onClick={onClose}
-        className='bg-base-300/65 btn btn-ghost btn-circle absolute end-3 top-1 z-10 hidden h-6 min-h-6 w-6 focus:outline-hidden sm:flex'
+        className='bg-base-300/65 btn btn-ghost btn-circle absolute end-3 top-1 z-10 hidden h-9 min-h-9 w-9 focus:outline-hidden sm:flex'
       >
         <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
           <path

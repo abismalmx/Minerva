@@ -18,6 +18,7 @@ import { DEFAULT_SYSTEM_SETTINGS } from '@/services/constants';
 import {
   BoxedList,
   NavigationRow,
+  PanelHeader,
   SettingsRow,
   SettingsSelect,
   SettingsSwitchRow,
@@ -474,6 +475,10 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
 
   return (
     <div className='my-4 w-full space-y-6'>
+      <PanelHeader
+        title={_('Behavior')}
+        description={_('Decide how taps, swipes, keys and clicks move through a book.')}
+      />
       <BoxedList title={_('Scroll')} data-setting-id='settings.control.scrolledMode'>
         <SettingsSwitchRow
           label={_('Scrolled Mode')}

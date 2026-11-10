@@ -141,7 +141,7 @@ const AnnotationsFilterPanel: React.FC<AnnotationsFilterPanelProps> = ({
                   aria-label={label}
                   title={label}
                   onClick={() => onToggleColor(color)}
-                  className='eink-bordered btn btn-ghost h-6 min-h-6 w-6 rounded-full p-0'
+                  className='eink-bordered btn btn-ghost h-8 min-h-8 w-8 rounded-full p-0'
                 >
                   <span
                     className='h-3.5 w-3.5 rounded-full border-2'
@@ -276,7 +276,7 @@ const AnnotationsToolbar: React.FC<AnnotationsToolbarProps> = ({
         className='dropdown-bottom dropdown-end'
         menuClassName='no-triangle mt-1'
         buttonClassName={clsx(
-          'btn btn-ghost btn-circle h-6 min-h-6 w-6 p-0',
+          'btn btn-ghost btn-circle h-8 min-h-8 w-8 p-0',
           hasActiveFilters && 'bg-base-300',
         )}
         containerClassName='h-8 pt-1'

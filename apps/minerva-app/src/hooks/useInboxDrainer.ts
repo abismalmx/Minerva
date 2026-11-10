@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { fetchWithAuth } from '@/utils/fetch';
 import { getAPIBaseUrl } from '@/services/environment';
 import { isTauriAppPlatform } from '@/services/environment';
+import { isSelfHostedBackend } from '@/services/selfhostedBackend';
 import { ingestFile } from '@/services/ingestService';
 import { drainInbox, DEFAULT_MAX_ITEMS_PER_PASS } from '@/services/send/inboxDrainer';
 import { isInboxDrainEnabled } from '@/services/send/devicePrefs';
@@ -53,7 +54,7 @@ export function useInboxDrainer(): void {
   const runningRef = useRef(false);
 
   const runDrain = useCallback(async () => {
-    if (!user || !appService || runningRef.current) return;
+    if (!user || !appService || runningRef.current || isSelfHostedBackend()) return;
     // Per-device opt-out: this device does not claim/process inbox items.
     if (!isInboxDrainEnabled()) return;
     // Throttle: focus, visibility and remounts fire in bursts, so drain (and so
@@ -183,7 +184,7 @@ export function useInboxDrainer(): void {
   }, [user, appService, settings, envConfig]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isSelfHostedBackend()) return;
     void runDrain();
     const isVisible = () => document.visibilityState !== 'hidden';
     const interval = setInterval(() => {

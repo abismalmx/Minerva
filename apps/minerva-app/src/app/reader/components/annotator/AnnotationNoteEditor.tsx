@@ -1,12 +1,15 @@
 import clsx from 'clsx';
 import React, { useState } from 'react';
+import { LuImagePlus } from 'react-icons/lu';
 
 import { useTranslation } from '@/hooks/useTranslation';
 import TextButton from '@/components/TextButton';
 import TextEditor from '@/components/TextEditor';
+import ImageSearchDialog, { SelectedImageData } from './ImageSearchDialog';
 
 interface AnnotationNoteEditorProps {
   value: string;
+  selectionText?: string;
   isVertical?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -23,6 +26,7 @@ interface AnnotationNoteEditorProps {
  */
 const AnnotationNoteEditor: React.FC<AnnotationNoteEditorProps> = ({
   value,
+  selectionText,
   isVertical,
   className,
   style,
@@ -31,8 +35,18 @@ const AnnotationNoteEditor: React.FC<AnnotationNoteEditorProps> = ({
 }) => {
   const _ = useTranslation();
   const [draftText, setDraftText] = useState(value);
+  const [showImageSearch, setShowImageSearch] = useState(false);
 
   const save = () => onSave(draftText);
+
+  const handleSelectImage = (data: SelectedImageData) => {
+    setShowImageSearch(false);
+    let md = `![${data.title || _('Photo')}](${data.url})`;
+    if (data.extract && data.includeExtract !== false) {
+      md += `\n\n> ${data.extract}`;
+    }
+    setDraftText((prev) => (prev.trim() ? `${prev.trim()}\n\n${md}` : md));
+  };
 
   return (
     // `content` carries the responsive base font size (16 / 18.4 / 20px) that
@@ -57,13 +71,36 @@ const AnnotationNoteEditor: React.FC<AnnotationNoteEditorProps> = ({
           autoFocus
         />
         <div
-          className={clsx('flex shrink-0 justify-end gap-3', isVertical && 'flex-col')}
+          className={clsx(
+            'flex shrink-0 items-center justify-between gap-3',
+            isVertical && 'flex-col',
+          )}
           dir='ltr'
         >
-          <TextButton onClick={onCancel}>{_('Cancel')}</TextButton>
-          <TextButton onClick={save}>{_('Save')}</TextButton>
+          <button
+            type='button'
+            onClick={() => setShowImageSearch(true)}
+            className='btn btn-ghost btn-xs text-base-content/70 hover:text-primary flex items-center gap-1.5'
+            title={_('Search photo or attach image')}
+          >
+            <LuImagePlus size={16} />
+            <span className='text-xs font-normal'>{_('Photo')}</span>
+          </button>
+          <div className='flex items-center gap-2'>
+            <TextButton onClick={onCancel}>{_('Cancel')}</TextButton>
+            <TextButton onClick={save}>{_('Save')}</TextButton>
+          </div>
         </div>
       </div>
+
+      {showImageSearch && (
+        <ImageSearchDialog
+          isOpen={showImageSearch}
+          initialQuery={selectionText || ''}
+          onSelectImage={handleSelectImage}
+          onClose={() => setShowImageSearch(false)}
+        />
+      )}
     </div>
   );
 };

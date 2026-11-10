@@ -22,7 +22,7 @@
 import { errorJson, json, nowIso, readJson, type Env } from './http';
 import { mintTicket, verifyTicket } from './storageTicket';
 
-const FILE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+export const FILE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 /** The largest number of files one purge request may carry. */
 const MAX_PURGE_FILES = 100;
@@ -106,12 +106,23 @@ const findLiveFileKeys = async (env: Env, userId: string, keys: string[]): Promi
  * `<user_id>/<fileName>`; without this an attacker escapes their own prefix
  * into another user's namespace (GHSA-mfmj-2frf-vhgw).
  */
-export const isSafeObjectKeyName = (name: unknown): name is string => {
-  if (typeof name !== 'string' || !name) return false;
-  if (name.length > 512) return false;
-  if (name.includes('..')) return false;
-  if (name.startsWith('/') || name.endsWith('/')) return false;
-  return FILE_KEY_PATTERN.test(name);
+export const isSafeObjectKeyName = (fileName: unknown): fileName is string => {
+  if (typeof fileName !== 'string' || fileName.length === 0 || fileName.length > 512) return false;
+
+  const forms = [fileName];
+  try {
+    const decoded = decodeURIComponent(fileName);
+    if (decoded !== fileName) forms.push(decoded);
+  } catch {
+    return false; // malformed percent-encoding
+  }
+
+  for (const form of forms) {
+    if (form.includes('\\') || form.includes('\0')) return false;
+    if (form.startsWith('/') || form.endsWith('/')) return false;
+    if (form.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) return false;
+  }
+  return true;
 };
 
 /** `POST /api/storage/upload` — reserve a slot and answer the upload URL. */
@@ -310,10 +321,10 @@ export const handleStorageObjectPut = async (request: Request, env: Env): Promis
   // the write fell back to the global maximum (the reservation was gone) and
   // the bytes landed in R2 outside the account's quota.
   const reserved = await env.SYNC_DB.prepare(
-    'SELECT file_size FROM files WHERE file_key = ? AND deleted_at IS NULL',
+    'SELECT user_id, book_hash, file_size FROM files WHERE file_key = ? AND deleted_at IS NULL',
   )
     .bind(key)
-    .first<{ file_size: number }>();
+    .first<{ user_id: string; book_hash: string | null; file_size: number }>();
   if (!reserved) {
     return errorJson('No active reservation for this object', 403);
   }
@@ -366,6 +377,41 @@ export const handleStorageObjectPut = async (request: Request, env: Env): Promis
     )
       .bind(nowIso(), key)
       .run();
+  }
+
+  // Reconcile books table: ensure uploaded_at and cover_hash are kept in sync
+  if (reserved.book_hash && reserved.user_id) {
+    try {
+      const isCover =
+        key.endsWith('/cover.png') || key.endsWith('/cover.jpeg') || key.endsWith('/cover.jpg');
+
+      if (isCover) {
+        await env.SYNC_DB.prepare(
+          `UPDATE books SET cover_hash = ?, synced_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE user_id = ? AND book_hash = ?`,
+        )
+          .bind(reserved.book_hash, reserved.user_id, reserved.book_hash)
+          .run();
+      } else {
+        const parts = key.split('/');
+        const filename = parts[parts.length - 1] || '';
+        const dotIndex = filename.lastIndexOf('.');
+        const ext = dotIndex !== -1 ? filename.slice(dotIndex + 1).toUpperCase() : 'EPUB';
+        const title = dotIndex !== -1 ? filename.slice(0, dotIndex) : filename;
+
+        await env.SYNC_DB.prepare(
+          `INSERT INTO books (user_id, book_hash, format, title, created_at, updated_at, uploaded_at, synced_at)
+           VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), strftime('%s','now') * 1000, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+           ON CONFLICT (user_id, book_hash) DO UPDATE SET
+             uploaded_at = COALESCE(books.uploaded_at, strftime('%s','now') * 1000),
+             synced_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+        )
+          .bind(reserved.user_id, reserved.book_hash, ext, title)
+          .run();
+      }
+    } catch (err) {
+      console.warn('Reconciling book record on object upload failed:', err);
+    }
   }
 
   return json({ ok: true });
@@ -556,7 +602,8 @@ export const handleStorageStats = async (env: Env, userId: string): Promise<Resp
  * The key travels in the QUERY STRING: that is what the client sends
  * (`DELETE /api/storage/delete?fileKey=…`) and what the hosted backend reads
  * (`const { fileKey } = req.query`). The JSON body is accepted as well, so a
- * caller that prefers it is not turned away.
+ * caller that prefers it is not turned away. Also accepts `bookHash` to delete
+ * all files belonging to that book in R2 and D1.
  */
 export const handleStorageDelete = async (
   request: Request,
@@ -564,27 +611,77 @@ export const handleStorageDelete = async (
   userId: string,
 ): Promise<Response> => {
   const url = new URL(request.url);
-  const body = await readJson<{ fileKey?: string; fileKeys?: unknown }>(request);
+  const body = await readJson<{ fileKey?: string; fileKeys?: unknown; bookHash?: string }>(request);
   const queryKey = url.searchParams.get('fileKey');
-  const keys = Array.isArray(body?.fileKeys)
+  const queryBookHash = url.searchParams.get('bookHash');
+  const bookHash = typeof body?.bookHash === 'string' ? body.bookHash : (queryBookHash ?? null);
+
+  if (bookHash && !/^[A-Za-z0-9_-]{8,128}$/.test(bookHash)) {
+    return errorJson('Invalid bookHash format', 400);
+  }
+
+  const rawKeys: string[] = Array.isArray(body?.fileKeys)
     ? (body.fileKeys as string[])
     : typeof body?.fileKey === 'string'
       ? [body.fileKey]
       : typeof queryKey === 'string' && queryKey
         ? [queryKey]
         : [];
-  if (keys.length === 0) return errorJson('Missing or invalid fileKey', 400);
-  if (keys.length > MAX_DELETE_FILES) {
+
+  const keysToDelete = new Set<string>();
+
+  for (const rawKey of rawKeys) {
+    if (typeof rawKey !== 'string' || !rawKey.trim()) continue;
+    const subPath = rawKey.startsWith(`${userId}/`) ? rawKey.slice(userId.length + 1) : rawKey;
+    if (isSafeObjectKeyName(subPath)) {
+      keysToDelete.add(`${userId}/${subPath}`);
+    }
+  }
+
+  // If a bookHash is specified, locate all DB files for that book under this user
+  if (bookHash) {
+    const dbFiles = await env.SYNC_DB.prepare(
+      'SELECT file_key FROM files WHERE user_id = ? AND book_hash = ? AND deleted_at IS NULL',
+    )
+      .bind(userId, bookHash)
+      .all<{ file_key: string }>();
+
+    for (const row of dbFiles.results ?? []) {
+      if (row.file_key && row.file_key.startsWith(`${userId}/`)) {
+        keysToDelete.add(row.file_key);
+      }
+    }
+
+    // Also list and delete any objects physically stored in R2 under ${userId}/books/${bookHash}/
+    const r2Prefix = `${userId}/books/${bookHash}/`;
+    if (typeof env.LIBRARY_BUCKET?.list === 'function') {
+      try {
+        const listed = await env.LIBRARY_BUCKET.list({ prefix: r2Prefix });
+        for (const obj of listed.objects ?? []) {
+          if (obj.key.startsWith(`${userId}/`)) {
+            keysToDelete.add(obj.key);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to list R2 objects with prefix', r2Prefix, e);
+      }
+    }
+  }
+
+  if (keysToDelete.size === 0) {
+    return errorJson('Missing or invalid fileKey or bookHash', 400);
+  }
+  if (keysToDelete.size > MAX_DELETE_FILES) {
     return errorJson(`Cannot delete more than ${MAX_DELETE_FILES} files at once`, 400);
   }
 
   const deleted: string[] = [];
-  for (const key of keys) {
-    if (!key.startsWith(`${userId}/`)) continue;
+  const now = nowIso();
+  for (const key of keysToDelete) {
     await env.SYNC_DB.prepare(
       'UPDATE files SET deleted_at = ? WHERE user_id = ? AND file_key = ? AND deleted_at IS NULL',
     )
-      .bind(nowIso(), userId, key)
+      .bind(now, userId, key)
       .run();
     await env.LIBRARY_BUCKET.delete(key);
     deleted.push(key);

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { MdEdit } from 'react-icons/md';
 import { BookNote } from '@/types/book';
 import { useEnv } from '@/context/EnvContext';
@@ -9,6 +9,7 @@ import { useReaderStore } from '@/store/readerStore';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
+import Dialog from '@/components/Dialog';
 import { parseNoteMarkdown } from '../../utils/noteMarkdown';
 
 interface AnnotationNoteItemProps {
@@ -47,6 +48,8 @@ const AnnotationNoteItem: React.FC<AnnotationNoteItemProps> = ({
   const { setHoveredBookKey } = useReaderStore();
   const { setSideBarVisible } = useSidebarStore();
   const size16 = useResponsiveSize(16);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   // Same parser (and sanitizer) as the sidebar so a note previews identically
   // in both places (#5785); cached because the popup re-renders on every
   // reposition and parsing long notes is not free.
@@ -73,6 +76,17 @@ const AnnotationNoteItem: React.FC<AnnotationNoteItemProps> = ({
     }
   };
 
+  const handleCardClick = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.tagName.toLowerCase() === 'img') {
+      event.stopPropagation();
+      const img = target as HTMLImageElement;
+      setLightboxUrl(img.src);
+      return;
+    }
+    handleShowAnnotation();
+  };
+
   const handleEditClick = (event: React.MouseEvent) => {
     // Editing must not also trigger the card's own click handler
     // (handleShowAnnotation), which would open the sidebar underneath it.
@@ -81,46 +95,68 @@ const AnnotationNoteItem: React.FC<AnnotationNoteItemProps> = ({
   };
 
   return (
-    <div
-      role='none'
-      onClick={handleShowAnnotation}
-      className={clsx(cardClassName, 'cursor-pointer transition-colors')}
-      style={cardStyle}
-    >
-      {note.note && (
-        <div
-          dir='auto'
-          className={clsx(
-            'm-4 hyphens-auto text-justify font-sans text-sm',
-            isVertical && 'writing-vertical-rl',
-          )}
-          style={
-            isVertical ? { fontFeatureSettings: "'vrt2' 1, 'vert' 1", minWidth: 'max-content' } : {}
-          }
-        >
-          <div className='flex flex-col justify-between gap-2'>
-            <div
-              className='prose prose-sm max-w-none'
-              dangerouslySetInnerHTML={{ __html: noteHtml }}
-            />
-            <div className='flex items-center justify-between gap-2'>
-              <span className='text-base-content/50 text-sm sm:text-xs'>
-                {dayjs(note.createdAt).fromNow()}
-              </span>
-              {/* Always visible, not hover-gated: the popup is used on touch
-                  devices, which have no hover state to reveal it. */}
-              <button
-                onClick={handleEditClick}
-                className='btn btn-ghost btn-xs p-0 text-blue-500 hover:border-transparent hover:bg-transparent'
-                aria-label={_('Edit')}
-              >
-                <MdEdit size={size16} />
-              </button>
+    <>
+      <div
+        role='none'
+        onClick={handleCardClick}
+        className={clsx(cardClassName, 'cursor-pointer transition-colors')}
+        style={cardStyle}
+      >
+        {note.note && (
+          <div
+            dir='auto'
+            className={clsx(
+              'm-4 hyphens-auto text-justify font-sans text-sm',
+              isVertical && 'writing-vertical-rl',
+            )}
+            style={
+              isVertical
+                ? { fontFeatureSettings: "'vrt2' 1, 'vert' 1", minWidth: 'max-content' }
+                : {}
+            }
+          >
+            <div className='flex flex-col justify-between gap-2'>
+              <div
+                className='prose prose-sm max-w-none'
+                dangerouslySetInnerHTML={{ __html: noteHtml }}
+              />
+              <div className='flex items-center justify-between gap-2'>
+                <span className='text-base-content/50 text-sm sm:text-xs'>
+                  {dayjs(note.createdAt).fromNow()}
+                </span>
+                {/* Always visible, not hover-gated: the popup is used on touch
+                    devices, which have no hover state to reveal it. */}
+                <button
+                  onClick={handleEditClick}
+                  className='btn btn-ghost btn-xs p-0 text-blue-500 hover:border-transparent hover:bg-transparent'
+                  aria-label={_('Edit')}
+                >
+                  <MdEdit size={size16} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {lightboxUrl && (
+        <Dialog
+          isOpen
+          dismissible
+          onClose={() => setLightboxUrl(null)}
+          title={_('Photo Preview')}
+          boxClassName='max-w-xl'
+          contentClassName='p-2 flex flex-col items-center justify-center'
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt='Full preview'
+            className='max-h-[75vh] max-w-full rounded-lg object-contain shadow-2xl'
+          />
+        </Dialog>
       )}
-    </div>
+    </>
   );
 };
 

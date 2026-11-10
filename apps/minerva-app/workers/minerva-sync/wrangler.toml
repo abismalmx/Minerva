@@ -17,7 +17,7 @@ bucket_name = "minerva-library"
 [[d1_databases]]
 binding = "SYNC_DB"
 database_name = "minerva-sync"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "599b4850-2098-4df2-9c72-5a5fd4287725"
 # Point this at your own database before deploying:
 #   wrangler d1 create minerva-sync
 #   wrangler d1 migrations apply minerva-sync --remote
@@ -43,7 +43,11 @@ STORAGE_FIXED_QUOTA = "0"
 # budget can lower it; the default (600 000, the OWASP recommendation) is
 # used when this is absent, and the count is stored with each hash, so
 # changing it never invalidates the accounts that already exist.
-PASSPHRASE_KDF_ITERATIONS = "600000"
+PASSPHRASE_KDF_ITERATIONS = "100000"
+HASH_ALGORITHM = "argon2id"
+ARGON2_MEMORY = "4096"
+ARGON2_PASSES = "1"
+ARGON2_PARALLELISM = "1"
 
 [observability]
 enabled = true

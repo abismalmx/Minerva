@@ -209,6 +209,19 @@ export class MemoryR2 {
   async delete(key: string): Promise<void> {
     this.objects.delete(key);
   }
+
+  async list(options?: {
+    prefix?: string;
+  }): Promise<{ objects: Array<{ key: string; size: number }> }> {
+    const prefix = options?.prefix ?? '';
+    const objects: Array<{ key: string; size: number }> = [];
+    for (const [key, obj] of this.objects.entries()) {
+      if (key.startsWith(prefix)) {
+        objects.push({ key, size: obj.body.length });
+      }
+    }
+    return { objects };
+  }
 }
 
 /** The signing secret the tests use. */

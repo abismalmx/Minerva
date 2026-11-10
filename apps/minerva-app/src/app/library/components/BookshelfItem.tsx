@@ -426,6 +426,10 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // A control nested in the tile (the details button, the cloud button)
+    // handles its own keys. Without this the tile would swallow Enter and
+    // open the book instead of the button the user pressed.
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea')) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleOpenItem();
@@ -454,8 +458,9 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
       <div
         className={clsx(
           'visible-focus-inset-2 group',
-          mode === 'grid' &&
-            'sm:hover:bg-base-300/50 flex h-full flex-col px-0 py-2 sm:rounded-md sm:px-4 sm:py-4',
+          // The hover signal is localized (DESIGN.md §2.4): on a grid tile the
+          // title warms and the lomo catches the light, not the whole cell.
+          mode === 'grid' && 'flex h-full flex-col px-0 py-2 sm:rounded-md sm:px-4 sm:py-4',
           mode === 'list' && 'border-base-300 flex flex-col border-b py-2',
           appService?.isMobileApp && 'no-context-menu',
           pressing && mode === 'grid' ? 'not-eink:scale-95' : 'scale-100',

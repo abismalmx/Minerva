@@ -10,7 +10,9 @@
     "migrate": "wrangler d1 migrations apply minerva-sync --local",
     "migrate:remote": "wrangler d1 migrations apply minerva-sync --remote"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
     "typescript": "^5.0.0",

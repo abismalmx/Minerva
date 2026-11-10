@@ -39,9 +39,12 @@ function SectionTitle<T extends React.ElementType = 'h3'>({
     <Tag
       className={clsx(
         'ps-4',
+        // Cased scripts lean on the casing and the tracking; caseless ones
+        // (CJK, Arabic, Hebrew, Indic, Thai) get the size instead, because
+        // `uppercase` is a no-op there.
         isCaselessUILang()
-          ? 'text-base-content/65 text-[0.8em] font-medium'
-          : 'text-base-content/65 text-[0.8em] font-medium',
+          ? 'text-base-content/65 text-[1em] font-medium'
+          : 'text-base-content/65 text-[0.85em] font-semibold uppercase tracking-wider',
         className,
       )}
       {...rest}

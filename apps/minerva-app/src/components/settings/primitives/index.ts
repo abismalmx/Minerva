@@ -7,6 +7,7 @@
  * design rule changes, all callers update for free.
  */
 export { default as BoxedList } from './BoxedList';
+export { default as PanelHeader } from './PanelHeader';
 export { default as SettingsRow } from './SettingsRow';
 export { default as SettingsSwitchRow } from './SettingsSwitchRow';
 export { default as SettingsSelect } from './SettingsSelect';

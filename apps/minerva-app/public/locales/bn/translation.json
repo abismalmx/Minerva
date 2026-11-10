@@ -2692,5 +2692,13 @@
   "Open Experience": "কীভাবে খোলে",
   "In-app browser": "অ্যাপের ভেতরের ব্রাউজার",
   "System app": "সিস্টেম অ্যাপ",
-  "Sign in to Google once — Minerva keeps the session.": "একবার Google-এ সাইন ইন করুন — Minerva সেশন ধরে রাখে।"
+  "Sign in to Google once — Minerva keeps the session.": "একবার Google-এ সাইন ইন করুন — Minerva সেশন ধরে রাখে।",
+  "Choose the typeface, size and weight your books are set in.": "Choose the typeface, size and weight your books are set in.",
+  "Decide how pages are laid out and how the reader is arranged.": "Decide how pages are laid out and how the reader is arranged.",
+  "Decide how taps, swipes, keys and clicks move through a book.": "Decide how taps, swipes, keys and clicks move through a book.",
+  "Let an assistant answer questions about the book you are reading.": "Let an assistant answer questions about the book you are reading.",
+  "Choose the voice that reads the book aloud to you.": "Choose the voice that reads the book aloud to you.",
+  "Tune the details of the reader: fonts, images and everything else.": "Tune the details of the reader: fonts, images and everything else.",
+  "Set the language of the interface and the translation of what you read.": "Set the language of the interface and the translation of what you read.",
+  "Pick the palette, background and textures of your reading surface.": "Pick the palette, background and textures of your reading surface."
 }
