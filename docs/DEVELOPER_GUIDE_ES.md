@@ -914,6 +914,33 @@ MINERVA_TTS_CATALOG_URL=
 >
 > Un despliegue que solo quiera el desbloqueo premium mantiene `SELF_HOSTED_BACKEND` apagado y sigue usando Minerva Cloud.
 
+> **`NEXT_PUBLIC_API_BASE_URL` es opcional en los binarios que se distribuyen.**
+> Los artefactos públicos de Minerva se compilan **sin** esa variable: el
+> bundle no lleva ninguna URL incrustada, ni de terceros ni personal. Cuando
+> el usuario final conecta con su propio Worker, la app resuelve la URL **en
+> tiempo de ejecución**:
+>
+> 1. `getCustomBackendUrl()` (`apps/minerva-app/src/services/environment.ts`)
+>    lee de `localStorage` la clave `minerva_custom_backend_url`
+>    (`CUSTOM_BACKEND_STORAGE_KEY`) y la sanea antes de devolverla.
+> 2. `setCustomBackendUrl()` la sanea y la guarda. Es lo que llama el
+>    formulario de autenticación cuando el usuario pega su URL de Worker
+>    (`apps/minerva-app/src/app/auth/components/EmailPasswordAuth.tsx`).
+> 3. `getBaseUrl()` resuelve en este orden: la URL guardada → el `apiBaseUrl`
+>    del runtime config → `API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL` → el
+>    placeholder neutro `https://web.minerva.invalid`.
+>
+> Es decir: **la variable solo hace falta en un despliegue propio
+> preconfigurado** (un servidor web, una imagen de Docker, una tienda). Para
+> un binario que se distribuye, déjala vacía o fuera: el usuario pega su URL
+> en la pantalla de autenticación y ya está.
+>
+> El saneamiento no es cosmético: `sanitizeBackendUrl()` **exige `https://`**
+> (solo admite `http://` en `localhost` y direcciones loopback), descarta las
+> credenciales incrustadas en la URL, la cadena de consulta y el fragmento, y
+> normaliza las barras finales. Es la misma función que evita CWE-319
+> (credenciales en claro) y la inyección en la URL.
+
 #### 4.4.2 Variables del backend autoalojado
 
 ```dotenv
@@ -942,6 +969,13 @@ PASSPHRASE_KDF_ITERATIONS=600000
 | `MAX_UPLOAD_BYTES` | Techo de subida por libro. El límite de la plataforma es 100 MB; el Worker responde `413` en lugar de truncar |
 | `STORAGE_FIXED_QUOTA` | Cuota por cuenta en bytes. `0` = sin cuota |
 | `PASSPHRASE_KDF_ITERATIONS` | Iteraciones del PBKDF2. El número queda guardado con cada hash, así que bajarlo nunca invalida las cuentas ya creadas |
+
+> Aquí `NEXT_PUBLIC_API_BASE_URL` **sí** se rellena: es la URL que el Worker
+> y la app comparten en un despliegue propio, y por eso `deploy-cloudflare.sh`
+> la escribe en `apps/minerva-app/.env.local`. En los binarios que se
+> distribuyen, en cambio, se **omite a propósito** (ver
+> [4.4.1](#441-variables-de-la-app)): el usuario indica su URL en la
+> pantalla de autenticación.
 
 **Ningún valor real se versiona.** Solo se publican `.env.example`; los `.env.local` están en `.gitignore`.
 
@@ -1598,18 +1632,25 @@ find apps/minerva-app/out/_next/static -name '*.js.map' | wc -l
 export const stripSourceMappingComment = (code) =>
   code.replace(/\n\/\/# sourceMappingURL=[^\n]*/g, '');
 
+export const stripCssSourceMappingComment = (code) =>
+  code.replace(/\n\/\*# sourceMappingURL=[^*]*\*\//g, '');
+
 export const stripMaps = (dir) => {
   if (!existsSync(dir)) return 0;
   let removed = 0;
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) removed += stripMaps(full);
-    else if (entry.endsWith('.js.map')) {
+    else if (entry.endsWith('.map')) {
       rmSync(full);
       removed += 1;
     } else if (entry.endsWith('.js')) {
       const code = readFileSync(full, 'utf8');
       const stripped = stripSourceMappingComment(code);
+      if (stripped !== code) writeFileSync(full, stripped);
+    } else if (entry.endsWith('.css')) {
+      const code = readFileSync(full, 'utf8');
+      const stripped = stripCssSourceMappingComment(code);
       if (stripped !== code) writeFileSync(full, stripped);
     }
   }
@@ -1617,11 +1658,72 @@ export const stripMaps = (dir) => {
 };
 ```
 
+El script borra **todos** los `*.map` —los de JavaScript y también los
+`*.css.map`— y quita el comentario `sourceMappingURL` que quedaba colgando,
+tanto en los `.js` (`//# sourceMappingURL=…`) como en los `.css`
+(`/*# sourceMappingURL=…*/`). Sin ese segundo paso el navegador (y el
+devtools) seguiría intentando descargar un mapa que ya no existe, y la
+petición se responde con HTML, que el webview reporta como error de source
+map. El contrato de la build es por tanto: **cero ficheros `.map` y cero
+referencias `sourceMappingURL` en el bundle que se distribuye**.
+
+```bash
+pnpm --filter @minerva/app build
+pnpm --filter @minerva/app strip-sourcemaps
+
+# Los dos deben dar 0
+find apps/minerva-app/out -name '*.map' | wc -l
+grep -rl "sourceMappingURL" apps/minerva-app/out | wc -l
+```
+
+> **El bundle viaja comprimido dentro del binario.** Tauri incrusta el
+> frontend en la biblioteca nativa con brotli (`tauri-codegen`), así que un
+> `grep` sobre el `.exe` o el `.apk` no ve el JavaScript ni las hojas de
+> estilo: solo ve las cadenas sin comprimir (el binario Rust, el DEX). Para
+> comprobar lo que de verdad se distribuye hay que mirar los blobs de
+> `tauri-codegen-assets`, o auditar el artefacto entero con
+> `verify-no-telemetry.mjs`, que los descomprime (ver
+> [6.5.5](#655-nivel-5--verificación-binaria-del-artefacto)).
+
 Se ejecuta automáticamente en cada build de Tauri (`beforeBuildCommand: "pnpm build && pnpm strip-sourcemaps"`). Para builds de desarrollo con depuración:
 
 ```bash
 KEEP_SOURCEMAPS=1 pnpm --filter @minerva/app dev-macos
 ```
+
+#### 6.5.2.1 Verificación de neutralidad del artefacto final
+
+El bundle no puede llevar ninguna URL de terceros ni personal, porque el
+binario que se distribuye es **soberano**: funciona sin red y solo habla con
+el servidor que el usuario elige. La comprobación se hace sobre el
+artefacto final, no sobre el código:
+
+```bash
+# 1. El frontend que se va a incrustar solo lleva placeholders
+grep -rhoE "https://[a-z0-9.-]*workers\.dev" apps/minerva-app/out | sort -u
+# → https://minerva-cloudflare.tu-subdominio.workers.dev
+# → https://tu-worker.workers.dev
+
+# 2. El binario final no lleva ninguna URL de Worker en claro
+strings -a Minerva-1.0.5.exe | grep -ioE "https?://[a-z0-9.-]*workers\.dev" | sort -u
+# → sin salida: el frontend va comprimido con brotli
+
+# 3. La neutralidad se comprueba sobre los blobs descomprimidos
+node apps/minerva-app/scripts/verify-no-telemetry.mjs --brotli \
+  target/x86_64-pc-windows-gnu/release/build/Minerva-*/out/tauri-codegen-assets
+
+# 4. Cero mapas y cero referencias colgantes en el bundle
+find apps/minerva-app/out -name '*.map' | wc -l
+grep -rl "sourceMappingURL" apps/minerva-app/out | wc -l
+```
+
+> **Cuidado con el `strings` sobre un artefacto comprimido.** Un `grep` de
+> URLs sobre el `.exe` solo ve lo que no va comprimido. El frontend va con
+> brotli, así que para estar seguro hay que buscar en los blobs de
+> `tauri-codegen-assets` (con `--brotli`) o sobre el `out/` que se compila.
+> El mismo cuidado aplica a los `.exe` y `.apk` que a los AppImage: el
+> payload del AppImage es un squashfs y hay que extraerlo con
+> `--appimage-extract` antes de auditarlo.
 
 #### 6.5.3 Nivel 3 — Verificación dinámica
 
@@ -1676,6 +1778,11 @@ El script clasifica cada coincidencia en dos niveles:
 
 - **telemetry** — un SDK, un endpoint o una clave reales (`io.sentry`, `@sentry/`, `sentry.io`, `posthog.com`, `SentryInitProvider`, …). **Falla la compilación.**
 - **incidental** — el nombre del proveedor aparece solo como substring de otro identificador. En este proyecto son las propiedades de pdf.js que terminan en `Entry` (`canvasEntry`, `settingsEntry`, `hasXfaDatasetsEntry`): la «s» final de la palabra anterior más `Entry` forman «sentry». Se informa con su contexto para que una persona los confirme, pero no rompen la compilación.
+
+> El mismo script recorre un artefacto **AppImage** descomprimiendo primero su
+> payload (`--appimage-extract`): el squashfs esconde el frontend igual que
+> brotli. `listFiles()` ignora los enlaces simbólicos, que en ese payload
+> apuntan a directorios recursivos y hacían fallar el recorrido con `ELOOP`.
 
 El paso `verify no telemetry` de `build-all-platforms.yml` ejecuta esta comprobación sobre cada artefacto de la matriz.
 

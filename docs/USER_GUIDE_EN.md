@@ -118,22 +118,53 @@ format is Minerva's own bundle for transferring whole libraries.
 
 | Artifact | Platform | Size |
 | --- | --- | --- |
-| `Minerva-1.0.5-x86_64.AppImage` | Linux x86_64 | 251 857 400 B |
-| `minerva.appimage` | Linux x86_64 (copy of the above) | 251 857 400 B |
-| `Minerva-1.0.5.exe` | Windows x64 | 125 151 037 B |
-| `Minerva-1.0.5-windows-x86_64.zip` | Windows x64 (portable) | 78 424 752 B |
-| `Minerva-1.0.5.apk` | Android (arm64-v8a) | 86 917 590 B |
-| `Minerva-1.0.5-debug-signed.apk` | Android (arm64-v8a, signed) | 87 004 701 B |
+| `Minerva-1.0.5-x86_64.AppImage` | Linux x86_64 | 141 380 088 B |
+| `Minerva-1.0.5.exe` | Windows x64 (portable) | 95 532 324 B |
+| `Minerva-1.0.5-windows-x86_64.zip` | Windows x64 (portable, compressed) | 50 225 191 B |
+| `Minerva-1.0.5.apk` | Android (arm64-v8a) | 57 597 296 B |
 
-The APKs and the Windows executable from this batch **are not signed with a
-release key**. The `-debug-signed` APK is signed (v2 and v3 schemes) and is the
-one to install on Android. On Windows the `.exe` runs, but SmartScreen will show
-it as *unknown publisher*.
+SHA-256:
 
-> **About Linux:** the 1.0.5 AppImage uses the **CEF** runtime (Chromium
-> Embedded Framework) and ships the whole engine, hence its size. The older
-> `minerva.appimage` (167 MB) was an **Electron** build; they are not the same
-> binary.
+```text
+632ac17d3be9c83ac2831db9d7ae30399781d46e27df2be1c323bc067bb0a97a  Minerva-1.0.5-x86_64.AppImage
+9e7534e6d277af78e728aaea374f7ace408410c99f1c5c114d133923881b6c2b  Minerva-1.0.5.exe
+8674c297b80afbe16198dbc4485c589c251dbc16bb0a15e64b6136c0bb5e3156  Minerva-1.0.5-windows-x86_64.zip
+396bd5bb903bccfcdfda1bd9c8e93052e462495fd80e1f788345478a5b4a9e99  Minerva-1.0.5.apk
+```
+
+The APK is signed with the **Android debug key** (v2 and v3 signature
+schemes), so it installs straight away with "allow unknown sources". It is
+not signed with a release key, so Android identifies it as a debug app. It
+is the **same** key the previous 1.0.5 was signed with, so you can install
+it on top without uninstalling first. On Windows the `.exe` runs, but
+SmartScreen will show it as *unknown publisher*.
+
+> **Neutral, sovereign binaries.** All four artifacts were compiled **without
+> any third-party or personal URL baked in**: there is no
+> `NEXT_PUBLIC_API_BASE_URL` burnt into the bundle, no third-party account
+> configured, no analytics endpoint. The only origin that appears is the
+> `https://tu-worker.workers.dev` placeholder in the sign-in form. That is
+> why the binary works **100 % offline** (read, annotate, library, export)
+> and never talks to a service you did not pick yourself.
+>
+> The frontend travels **brotli-compressed** inside the binary, so a `strings`
+> over the `.exe` sees neither the URL it carries nor any other one. The
+> check on the artifact is done by decompressing it, which is what the
+> project's verification tool does (see
+> [6.5.2.1 Neutrality verification of the final artifact](DEVELOPER_GUIDE_EN.md#6521-neutrality-verification-of-the-final-artifact)).
+>
+> **About Linux:** the 1.0.5 AppImage uses the **WRY** runtime (WebKitGTK) and
+> ships the engine inside the package itself, hence its size.
+>
+> **The previous batch of binaries was withdrawn:** it was compiled **before**
+> the telemetry-eradication commit (`06f838a`) and still carried the Sentry SDK
+> inside. This batch is compiled from the clean commit and verified before it
+> is published (see
+> [6.5.5 Binary verification of the artifact](DEVELOPER_GUIDE_EN.md#655-level-5--binary-verification-of-the-artifact)).
+>
+> The desktop packages (AppImage, installer and Windows portable, universal
+> macOS DMG) are rebuilt in CI from the clean commit with
+> [build-all-platforms.yml](https://github.com/minerva/minerva/actions/workflows/build-all-platforms.yml).
 
 ### 2.2 Linux (AppImage)
 
@@ -305,6 +336,18 @@ The app **never asks for an account**. When it opens:
 3. **Settings → AI Assistant** if you want the book chat. It appears
    **disabled** until you flip the *Enable AI Assistant* switch.
 4. **Settings → Integrations** if you want to connect your own server.
+
+**The binaries this guide points at are neutral.** They carry no third-party
+and no personal URL baked in: the executable does not know in advance which
+server it talks to. That is why the app works **fully offline** (read,
+annotate, library, export) without touching the network, and why syncing is
+your decision: you name **your** Worker.
+
+If the build has the self-hosted mode enabled —and the public binaries do—
+the **sign-in screen** shows an editable **Cloudflare Server** field
+(placeholder `https://tu-worker.workers.dev`). Paste your Worker's URL
+there and the app stores it: no extra deployment, no reconfiguring files,
+no recompiling.
 
 ---
 
@@ -1141,6 +1184,29 @@ The script prints the Worker's URL when it finishes.
 3. Register with an email address and a *passphrase*. The server only stores
    a PBKDF2 derivation: **it cannot recover your passphrase**, so keep it
    safe.
+
+**Can I put my Worker's URL in directly when I sign in?**
+Yes. The **sign-in screen** has a **Cloudflare Server** field (placeholder
+`https://tu-worker.workers.dev`). Paste your Worker's URL there and press
+**Sign in** or **Sign up**: the app sanitizes it, stores it in the device's
+`localStorage`, and from that moment on it talks to your Worker. There is
+nothing else to deploy and nothing else to reconfigure.
+
+The field is **mandatory** in self-hosted mode: if there is no stored URL
+yet, the app asks for one and will not let you in.
+
+**Which URLs does it accept?**
+Only `https://` —with the single exception of `http://` on `localhost` and
+loopback addresses, for local testing. The app discards credentials
+embedded in the URL (`https://user:pass@…`), the query string (`?…`) and the
+fragment (`#…`), and strips trailing slashes. If the URL is not valid, the
+form says so and does not go on.
+
+**And if I do not want to sync with anything?**
+You do not have to do anything. The app works **100 % offline** with the
+official binaries: reading, annotating, the library, exports and the Notebook
+never leave your device. The Worker's URL is only needed when you want to
+sync across devices or keep your books in your own R2.
 
 **What exactly is the passphrase?**
 It is the key your data is encrypted with, in the client. The server stores

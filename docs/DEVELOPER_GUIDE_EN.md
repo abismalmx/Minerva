@@ -918,6 +918,33 @@ MINERVA_TTS_CATALOG_URL=
 >
 > A deployment that only wants the premium unlock keeps `SELF_HOSTED_BACKEND` off and continues to use Minerva Cloud.
 
+> **`NEXT_PUBLIC_API_BASE_URL` is optional in the binaries you distribute.**
+> Minerva's public artifacts are compiled **without** that variable: the
+> bundle carries no baked-in URL, neither third-party nor personal. When the
+> end user connects to their own Worker, the app resolves the URL **at
+> runtime**:
+>
+> 1. `getCustomBackendUrl()` (`apps/minerva-app/src/services/environment.ts`)
+>    reads the `minerva_custom_backend_url` key from `localStorage`
+>    (`CUSTOM_BACKEND_STORAGE_KEY`) and sanitizes it before returning it.
+> 2. `setCustomBackendUrl()` sanitizes and stores it. That is what the
+>    sign-in form calls when the user pastes their Worker's URL
+>    (`apps/minerva-app/src/app/auth/components/EmailPasswordAuth.tsx`).
+> 3. `getBaseUrl()` resolves in this order: the stored URL → the runtime
+>    config's `apiBaseUrl` → `API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL` →
+>    the neutral `https://web.minerva.invalid` placeholder.
+>
+> In other words: **the variable is only needed for a preconfigured
+> deployment** (a web server, a Docker image, a store). For a binary you
+> distribute, leave it empty or out: the user pastes their URL in the
+> sign-in screen and that is it.
+>
+> The sanitizing is not cosmetic: `sanitizeBackendUrl()` **requires
+> `https://`** (it only allows `http://` on `localhost` and loopback
+> addresses), discards credentials embedded in the URL, the query string and
+> the fragment, and normalizes trailing slashes. It is the same function
+> that keeps CWE-319 (cleartext credentials) and URL injection at bay.
+
 #### 4.4.2 Self-hosted backend variables
 
 ```dotenv
@@ -946,6 +973,13 @@ PASSPHRASE_KDF_ITERATIONS=600000
 | `MAX_UPLOAD_BYTES` | Per-book upload ceiling. The platform limit is 100 MB; the Worker answers `413` rather than truncating |
 | `STORAGE_FIXED_QUOTA` | Per-account quota in bytes. `0` means no quota |
 | `PASSPHRASE_KDF_ITERATIONS` | PBKDF2 iteration count. The number is stored alongside each hash, so lowering it never invalidates existing accounts |
+
+> Here `NEXT_PUBLIC_API_BASE_URL` **is** filled in: it is the URL the Worker
+> and the app share in a self-hosted deployment, which is why
+> `deploy-cloudflare.sh` writes it into `apps/minerva-app/.env.local`. In the
+> binaries that ship, on the other hand, it is **deliberately left out** (see
+> [4.4.1](#441-app-variables)): the user types their URL in the sign-in
+> screen.
 
 **No real value is ever versioned.** Only `.env.example` files are published; `.env.local` files are in `.gitignore`.
 
@@ -1602,18 +1636,25 @@ find apps/minerva-app/out/_next/static -name '*.js.map' | wc -l
 export const stripSourceMappingComment = (code) =>
   code.replace(/\n\/\/# sourceMappingURL=[^\n]*/g, '');
 
+export const stripCssSourceMappingComment = (code) =>
+  code.replace(/\n\/\*# sourceMappingURL=[^*]*\*\//g, '');
+
 export const stripMaps = (dir) => {
   if (!existsSync(dir)) return 0;
   let removed = 0;
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) removed += stripMaps(full);
-    else if (entry.endsWith('.js.map')) {
+    else if (entry.endsWith('.map')) {
       rmSync(full);
       removed += 1;
     } else if (entry.endsWith('.js')) {
       const code = readFileSync(full, 'utf8');
       const stripped = stripSourceMappingComment(code);
+      if (stripped !== code) writeFileSync(full, stripped);
+    } else if (entry.endsWith('.css')) {
+      const code = readFileSync(full, 'utf8');
+      const stripped = stripCssSourceMappingComment(code);
       if (stripped !== code) writeFileSync(full, stripped);
     }
   }
@@ -1621,11 +1662,71 @@ export const stripMaps = (dir) => {
 };
 ```
 
+The script deletes **every** `*.map` — the JavaScript ones and the
+`*.css.map` ones too — and drops the `sourceMappingURL` comment that was
+left dangling, both in the `.js` files (`//# sourceMappingURL=…`) and in the
+`.css` ones (`/*# sourceMappingURL=…*/`). Without that second step the
+browser (and devtools) would keep trying to fetch a map that no longer
+exists, and the request is answered with HTML, which the webview reports as
+a source map parse error. The build contract is therefore: **zero `.map`
+files and zero `sourceMappingURL` references in the bundle that ships**.
+
+```bash
+pnpm --filter @minerva/app build
+pnpm --filter @minerva/app strip-sourcemaps
+
+# Both must print 0
+find apps/minerva-app/out -name '*.map' | wc -l
+grep -rl "sourceMappingURL" apps/minerva-app/out | wc -l
+```
+
+> **The bundle travels compressed inside the binary.** Tauri embeds the
+> frontend into the native library with brotli (`tauri-codegen`), so a `grep`
+> over the `.exe` or the `.apk` does not see the JavaScript or the
+> stylesheets: it only sees the uncompressed strings (the Rust binary, the
+> DEX). To check what actually ships you have to look at the
+> `tauri-codegen-assets` blobs, or audit the whole artifact with
+> `verify-no-telemetry.mjs`, which decompresses them (see
+> [6.5.5](#655-level-5--binary-verification-of-the-artifact)).
+
 It runs automatically in every Tauri build (`beforeBuildCommand: "pnpm build && pnpm strip-sourcemaps"`). For development builds with debugging:
 
 ```bash
 KEEP_SOURCEMAPS=1 pnpm --filter @minerva/app dev-macos
 ```
+
+#### 6.5.2.1 Neutrality verification of the final artifact
+
+The bundle must carry no third-party and no personal URL, because the
+binary that ships is **sovereign**: it works with no network at all and only
+talks to the server the user picks. The check is done on the final artifact,
+not on the source:
+
+```bash
+# 1. The frontend that is about to be embedded only carries placeholders
+grep -rhoE "https://[a-z0-9.-]*workers\.dev" apps/minerva-app/out | sort -u
+# → https://minerva-cloudflare.tu-subdominio.workers.dev
+# → https://tu-worker.workers.dev
+
+# 2. The final binary carries no Worker URL in the clear
+strings -a Minerva-1.0.5.exe | grep -ioE "https?://[a-z0-9.-]*workers\.dev" | sort -u
+# → prints nothing: the frontend ships brotli-compressed
+
+# 3. Neutrality is checked over the decompressed blobs
+node apps/minerva-app/scripts/verify-no-telemetry.mjs --brotli \
+  target/x86_64-pc-windows-gnu/release/build/Minerva-*/out/tauri-codegen-assets
+
+# 4. Zero maps and zero dangling references in the bundle
+find apps/minerva-app/out -name '*.map' | wc -l
+grep -rl "sourceMappingURL" apps/minerva-app/out | wc -l
+```
+
+> **Careful with `strings` over a compressed artifact.** A URL grep over the
+> `.exe` only sees what is not compressed. The frontend ships with brotli, so
+> to be sure you have to search the `tauri-codegen-assets` blobs (with
+> `--brotli`) or the `out/` that was compiled. The same caveat applies to
+> `.exe` and `.apk` as to AppImages: an AppImage payload is a squashfs and
+> has to be extracted with `--appimage-extract` before it can be audited.
 
 #### 6.5.3 Level 3 — Dynamic verification
 
@@ -1680,6 +1781,11 @@ The script classifies every match on two levels:
 
 - **telemetry** — a real SDK, endpoint or key (`io.sentry`, `@sentry/`, `sentry.io`, `posthog.com`, `SentryInitProvider`, …). **Fails the build.**
 - **incidental** — the vendor name appears only as a substring of another identifier. In this project those are the pdf.js properties ending in `Entry` (`canvasEntry`, `settingsEntry`, `hasXfaDatasetsEntry`): the previous word's trailing "s" plus "Entry" spells "sentry". They are reported with their context so a human can confirm them, but they do not fail the build.
+
+> The same script walks an **AppImage** artifact by extracting its payload
+> first (`--appimage-extract`): the squashfs hides the frontend just like
+> brotli does. `listFiles()` skips symlinks, which in that payload point at
+> recursive directories and used to abort the walk with `ELOOP`.
 
 The `verify no telemetry` step of `build-all-platforms.yml` runs this check over every artifact of the matrix.
 

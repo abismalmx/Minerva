@@ -119,22 +119,55 @@ bibliotecas completas.
 
 | Artefacto | Sistema | Tamaño |
 | --- | --- | --- |
-| `Minerva-1.0.5-x86_64.AppImage` | Linux x86_64 | 251 857 400 B |
-| `minerva.appimage` | Linux x86_64 (copia del anterior) | 251 857 400 B |
-| `Minerva-1.0.5.exe` | Windows x64 | 125 151 037 B |
-| `Minerva-1.0.5-windows-x86_64.zip` | Windows x64 (portátil) | 78 424 752 B |
-| `Minerva-1.0.5.apk` | Android (arm64-v8a) | 86 917 590 B |
-| `Minerva-1.0.5-debug-signed.apk` | Android (arm64-v8a, firmado) | 87 004 701 B |
+| `Minerva-1.0.5-x86_64.AppImage` | Linux x86_64 | 141 380 088 B |
+| `Minerva-1.0.5.exe` | Windows x64 (portátil) | 95 532 324 B |
+| `Minerva-1.0.5-windows-x86_64.zip` | Windows x64 (portátil, comprimido) | 50 225 191 B |
+| `Minerva-1.0.5.apk` | Android (arm64-v8a) | 57 597 296 B |
 
-Los APK y el ejecutable de Windows de esta tanda **no están firmados con una
-clave de publicación**. El APK `-debug-signed` sí lo está (esquemas v2 y v3) y
-es el instalable que debes usar en Android. En Windows, el `.exe` funciona
-pero Windows SmartScreen lo mostrará como *unknown publisher*.
+SHA-256:
 
-> **Sobre Linux:** el AppImage de 1.0.5 usa el runtime **CEF** (Chromium
-> Embedded Framework) e incluye el motor completo, de ahí su tamaño. El
-> `minerva.appimage` que circulaba antes (167 MB) era una compilación
-> **Electron**; no son el mismo binario.
+```text
+632ac17d3be9c83ac2831db9d7ae30399781d46e27df2be1c323bc067bb0a97a  Minerva-1.0.5-x86_64.AppImage
+9e7534e6d277af78e728aaea374f7ace408410c99f1c5c114d133923881b6c2b  Minerva-1.0.5.exe
+8674c297b80afbe16198dbc4485c589c251dbc16bb0a15e64b6136c0bb5e3156  Minerva-1.0.5-windows-x86_64.zip
+396bd5bb903bccfcdfda1bd9c8e93052e462495fd80e1f788345478a5b4a9e99  Minerva-1.0.5.apk
+```
+
+El APK está firmado con la **clave de depuración de Android** (esquemas de
+firma v2 y v3), así que se instala directamente con «permitir fuentes
+desconocidas». No está firmado con una clave de publicación, de modo que
+Android lo identifica como una app de depuración. Es la **misma** clave con
+la que se firmó la 1.0.5 anterior, así que puedes instalarlo por encima sin
+desinstalar antes. En Windows, el `.exe` funciona pero SmartScreen lo
+mostrará como *unknown publisher*.
+
+> **Binarios neutros y soberanos.** Los cuatro artefactos se compilaron **sin
+> ninguna URL de terceros ni ninguna URL personal incrustada**: no hay
+> `NEXT_PUBLIC_API_BASE_URL` quemado en el bundle, ni cuenta de terceros
+> configurada, ni endpoint de analítica. El único origen que aparece es el
+> placeholder `https://tu-worker.workers.dev` del formulario de
+> autenticación. Por eso el binario funciona **100 % offline** (leer, anotar,
+> biblioteca, exportar) y no habla con ningún servicio que no hayas elegido
+> tú.
+>
+> El frontend viaja **comprimido con brotli** dentro del binario, así que un
+> `strings` sobre el `.exe` no ve ni la URL que lleva ni ninguna otra. La
+> comprobación sobre el artefacto se hace descomprimiéndolo, que es lo que
+> hace la herramienta de verificación del proyecto (ver
+> [6.5.2.1 Verificación de neutralidad del artefacto final](DEVELOPER_GUIDE_ES.md#6521-verificación-de-neutralidad-del-artefacto-final)).
+>
+> **Sobre Linux:** el AppImage de 1.0.5 usa el runtime **WRY** (WebKitGTK) e
+> incluye el motor dentro del propio paquete, de ahí su tamaño.
+>
+> **Los binarios de la tanda anterior se retiraron:** se compilaron **antes**
+> del commit de erradicación de la telemetría (`06f838a`) y todavía llevaban
+> dentro el SDK de Sentry. Esta tanda se compila desde el commit limpio y se
+> verifica antes de publicarse (ver
+> [6.5.5 Verificación binaria del artefacto](DEVELOPER_GUIDE_ES.md#655-nivel-5--verificación-binaria-del-artefacto)).
+>
+> Los paquetes de escritorio (AppImage, instalador y portable de Windows, DMG
+> universal de macOS) se reconstruyen en CI desde el commit limpio con
+> [build-all-platforms.yml](https://github.com/minerva/minerva/actions/workflows/build-all-platforms.yml).
 
 ### 2.2 Linux (AppImage)
 
@@ -315,6 +348,18 @@ La app **no pide cuenta**. Al abrirla:
 3. Ajustes → **AI Assistant** si quieres usar el chat sobre el libro. Aparece
    **desactivado** hasta que actives el interruptor *Enable AI Assistant*.
 4. Ajustes → **Integraciones** si quieres conectar tu propio servidor.
+
+**Los binarios que descarga esta guía son neutros.** No llevan incrustada
+ninguna URL de terceros ni ninguna URL personal: el ejecutable no sabe de
+antemano a qué servidor habla. Por eso la app funciona **completamente
+offline** (leer, anotar, biblioteca, exportar) sin tocar la red, y cuando
+quieres sincronizar es tú quien indica **tu** Worker.
+
+Si el build tiene el modo autoalojado activado —y los binarios públicos lo
+tienen— la **pantalla de autenticación** muestra un campo editable
+**Servidor Cloudflare** (placeholder `https://tu-worker.workers.dev`). Pegas
+ahí la URL de tu Worker y la app la guarda: no hace falta desplegar nada
+más, ni reconfigurar ficheros, ni recompilar.
 
 ---
 
@@ -1161,6 +1206,29 @@ El script imprime la URL del Worker al terminar.
 2. Pega la URL del Worker y pulsa **Probar conexión**.
 3. Regístrate con email y *passphrase*. El servidor solo guarda una
    derivación PBKDF2: **no puede recuperar tu passphrase**, así que guárdala.
+
+**¿Puedo poner la URL de mi Worker directamente al iniciar sesión?**
+Sí. En la **pantalla de autenticación** hay un campo **Servidor Cloudflare**
+(placeholder `https://tu-worker.workers.dev`). Pegas ahí la URL de tu Worker
+y pulsas **Iniciar sesión** o **Registrarse**: la app la sanea, la guarda en
+el `localStorage` del dispositivo y a partir de ese momento habla con tu
+Worker. No hace falta desplegar nada más ni reconfigurar nada.
+
+El campo es **obligatorio** en el modo autoalojado: si no hay ninguna URL
+guardada de antes, la app te la pide y no deja entrar.
+
+**¿Qué URLs acepta?**
+Solo `https://` —con la única excepción de `http://` en `localhost` y en
+direcciones loopback, para pruebas locales—. La app descarta las
+credenciales incrustadas en la URL (`https://usuario:clave@…`), la cadena de
+consulta (`?…`) y el fragmento (`#…`), y quita las barras finales. Si la URL
+no es válida, el formulario lo dice y no continúa.
+
+**¿Y si no quiero sincronizar con nada?**
+No tienes que hacer nada. La app funciona **100 % offline** con los binarios
+oficiales: leer, anotar, la biblioteca, las exportaciones y el Cuaderno no
+salen de tu dispositivo. La URL del Worker solo hace falta cuando quieres
+sincronizar entre dispositivos o guardar tus libros en tu propio R2.
 
 **¿Qué es exactamente el *passphrase*?**
 Es la clave con la que se cifra en el cliente. El servidor guarda la sal y el
