@@ -4,7 +4,7 @@
 // makes Next emit `.js.map` and `.css.map` files next to the chunks in
 // `out/_next/static`; this script deletes them so the full original sources
 // never ship inside the app bundle, and drops the now-dangling
-// `//# sourceMappingURL=` comment from every chunk.
+// `sourceMappingURL` comment from every chunk.
 //
 // Set KEEP_SOURCEMAPS=1 to keep the maps in the bundle instead (see the
 // `dev-ios` / `dev-android` / `dev-macos` scripts): local devtools then resolve
@@ -24,6 +24,11 @@ const staticDir = path.join(appDir, 'out', '_next', 'static');
 export const stripSourceMappingComment = (code) =>
   code.replace(/\n\/\/# sourceMappingURL=[^\n]*/g, '');
 
+// The same comment in a stylesheet, where it is a CSS comment instead of a
+// line comment. Turbopack emits one per stylesheet it bundles.
+export const stripCssSourceMappingComment = (code) =>
+  code.replace(/\n\/\*# sourceMappingURL=[^*]*\*\//g, '');
+
 // Recursively delete every `*.js.map` under `dir` and drop the now-dangling
 // comment from every `*.js`. Turbopack names a map after a different hash than
 // the chunk pointing at it, so the comment cannot be matched to a chunk by file
@@ -42,6 +47,10 @@ export const stripMaps = (dir) => {
     } else if (entry.endsWith('.js')) {
       const code = readFileSync(full, 'utf8');
       const stripped = stripSourceMappingComment(code);
+      if (stripped !== code) writeFileSync(full, stripped);
+    } else if (entry.endsWith('.css')) {
+      const code = readFileSync(full, 'utf8');
+      const stripped = stripCssSourceMappingComment(code);
       if (stripped !== code) writeFileSync(full, stripped);
     }
   }

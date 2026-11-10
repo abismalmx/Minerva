@@ -171,10 +171,13 @@ export function collectArtifactStrings(buffer) {
 /** Every file under `dir`, recursively. */
 export function listFiles(dir) {
   const files = [];
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) files.push(...listFiles(full));
-    else files.push(full);
+  // `withFileTypes` does not follow symlinks. An extracted AppImage payload
+  // ships symlink loops (`lib/x86_64-linux-gnu/x86_64-linux-gnu/...`), and
+  // `statSync` on those fails with ELOOP, which aborted the whole audit.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...listFiles(full));
+    else if (!entry.isSymbolicLink()) files.push(full);
   }
   return files;
 }
@@ -279,7 +282,14 @@ const main = () => {
   let incidentalCount = 0;
 
   for (const target of files) {
-    const isDirectory = statSync(target).isDirectory();
+    // A symlinked target can still be a symlink loop; `statSync` would throw
+    // ELOOP and abort the audit, so it is guarded.
+    let isDirectory = false;
+    try {
+      isDirectory = statSync(target).isDirectory();
+    } catch {
+      isDirectory = false;
+    }
     const artifacts = isDirectory ? listFiles(target) : [target];
     const findings = [];
     for (const artifact of artifacts) {

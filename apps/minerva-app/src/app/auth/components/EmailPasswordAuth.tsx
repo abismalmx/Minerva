@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useTranslation } from '@/hooks/useTranslation';
 import { isSelfHostedBackend } from '@/services/selfhostedBackend';
+import {
+  getCustomBackendUrl,
+  setCustomBackendUrl,
+  sanitizeBackendUrl,
+} from '@/services/environment';
 
 type AuthView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgotten_password';
 
@@ -31,6 +36,7 @@ export default function EmailPasswordAuth({
   const _ = useTranslation();
   const [view, setView] = useState<AuthView>('sign_in');
   const [defaultEmail, setDefaultEmail] = useState('');
+  const [defaultServerUrl, setDefaultServerUrl] = useState(() => getCustomBackendUrl() || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -95,6 +101,29 @@ export default function EmailPasswordAuth({
     setError('');
     setMessage('');
     setLoading(true);
+
+    if (selfHosted) {
+      const enteredUrl = String(formData.get('serverUrl') || '').trim();
+      if (enteredUrl) {
+        const sanitized = sanitizeBackendUrl(enteredUrl);
+        if (sanitized) {
+          setCustomBackendUrl(sanitized);
+          setDefaultServerUrl(sanitized);
+        } else {
+          setError(
+            _(
+              'URL no válida o insegura. Debe comenzar con https:// (o http://localhost para pruebas locales).',
+            ),
+          );
+          setLoading(false);
+          return;
+        }
+      } else if (!getCustomBackendUrl()) {
+        setError(_('Por favor ingresa la URL de tu Cloudflare Worker'));
+        setLoading(false);
+        return;
+      }
+    }
     try {
       // The injected client is the account layer for this deployment: the
       // Supabase client, or the self-hosted Worker's — see `authSupabaseClient`.
@@ -147,6 +176,29 @@ export default function EmailPasswordAuth({
       onSubmit={handleSubmit}
       className='w-full space-y-4'
     >
+      {selfHosted && (
+        <div className='flex flex-col'>
+          <label
+            className='flex select-none items-center justify-between px-1 py-2'
+            htmlFor='serverUrl'
+          >
+            <span className='text-sm'>{_('Servidor Cloudflare')}</span>
+          </label>
+          <input
+            id='serverUrl'
+            name='serverUrl'
+            type='url'
+            required
+            defaultValue={defaultServerUrl}
+            placeholder={_('https://tu-worker.workers.dev')}
+            autoCapitalize='none'
+            autoCorrect='off'
+            className='input eink-bordered w-full rounded-lg placeholder:text-sm'
+            disabled={loading}
+            onFocus={keepAboveKeyboard}
+          />
+        </div>
+      )}
       <div className='flex flex-col'>
         <label className='flex select-none items-center justify-between px-1 py-2' htmlFor='email'>
           <span className='text-sm'>{selfHosted ? _('Username') : _('Email address')}</span>
