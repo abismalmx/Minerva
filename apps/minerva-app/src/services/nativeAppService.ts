@@ -617,8 +617,10 @@ export class NativeAppService extends BaseAppService {
   // WKWebView ignores `CanvasRenderingContext2D.filter`, so the Apple
   // platforms stay gated; Windows, Android and Linux are all Chromium.
   override supportsCanvasContext2DFilter = OS_TYPE !== 'ios' && OS_TYPE !== 'macos';
-  override supportsViewTransitionsAPI = detectViewTransitionsAPI();
-  override supportsViewTransitionGroup = detectViewTransitionGroup();
+  // Linux uses WebKitGTK where document.startViewTransition deadlocks with
+  // React's effect queue, freezing the UI on navigation (MINERVA-9).
+  override supportsViewTransitionsAPI = OS_TYPE !== 'linux' && detectViewTransitionsAPI();
+  override supportsViewTransitionGroup = OS_TYPE !== 'linux' && detectViewTransitionGroup();
   override distChannel = DIST_CHANNEL;
   override storefrontRegionCode: string | null = null;
   override isOnlineCatalogsAccessible = true;

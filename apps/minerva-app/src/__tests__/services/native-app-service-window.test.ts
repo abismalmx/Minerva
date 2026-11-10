@@ -129,16 +129,16 @@ describe('NativeAppService canvas filter capability', () => {
 });
 
 describe('NativeAppService view transition capabilities', () => {
-  test('follow the engine probe on every platform, Linux included', async () => {
+  test('follow the engine probe on supported platforms, but gate on Linux WebKitGTK', async () => {
     const startViewTransition = vi.fn();
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
       value: startViewTransition,
     });
     try {
-      for (const os of ['linux', 'windows', 'macos'] as const) {
-        expect((await loadServiceWithOS(os)).supportsViewTransitionsAPI).toBe(true);
-      }
+      expect((await loadServiceWithOS('linux')).supportsViewTransitionsAPI).toBe(false);
+      expect((await loadServiceWithOS('windows')).supportsViewTransitionsAPI).toBe(true);
+      expect((await loadServiceWithOS('macos')).supportsViewTransitionsAPI).toBe(true);
     } finally {
       // @ts-expect-error - removing the property the probe looks for
       delete document.startViewTransition;
