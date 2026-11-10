@@ -3117,7 +3117,10 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
       <ImageSearchDialog
         isOpen={showImageSearchDialog}
         initialQuery={imageSearchInitialQuery}
-        bookLanguage={bookData.book?.language}
+        bookLanguage={
+          bookData.book?.primaryLanguage ??
+          (bookData.bookDoc?.metadata.language as string | undefined)
+        }
         onSelectImage={handleSelectImageForNote}
         onClose={() => {
           setShowImageSearchDialog(false);

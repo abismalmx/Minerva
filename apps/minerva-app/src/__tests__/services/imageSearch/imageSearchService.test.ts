@@ -98,10 +98,10 @@ describe('imageSearchService', () => {
 
       const results = await searchWikipediaImages('Alexander', 'es');
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe('Alexander the Great');
+      expect(results[0]?.title).toBe('Alexander the Great');
       expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect(fetchMock.mock.calls[0][0]).toContain('es.wikipedia.org');
-      expect(fetchMock.mock.calls[1][0]).toContain('en.wikipedia.org');
+      expect(fetchMock.mock.calls[0]?.[0]).toContain('es.wikipedia.org');
+      expect(fetchMock.mock.calls[1]?.[0]).toContain('en.wikipedia.org');
     });
   });
 
@@ -139,10 +139,10 @@ describe('imageSearchService', () => {
 
       const results = await searchWikimediaCommons('Isaac Newton');
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe('Portrait of Isaac Newton 1689');
-      expect(results[0].thumbnailUrl).toBe('https://upload.wikimedia.org/thumb/newton.jpg');
-      expect(results[0].extract).toBe('Portrait of Isaac Newton in 1689.');
-      expect(results[0].source).toBe('wikimedia');
+      expect(results[0]?.title).toBe('Portrait of Isaac Newton 1689');
+      expect(results[0]?.thumbnailUrl).toBe('https://upload.wikimedia.org/thumb/newton.jpg');
+      expect(results[0]?.extract).toBe('Portrait of Isaac Newton in 1689.');
+      expect(results[0]?.source).toBe('wikimedia');
     });
   });
 
@@ -188,8 +188,8 @@ describe('imageSearchService', () => {
 
       const results = await searchPersonImages('Marie Curie', 'es');
       expect(results).toHaveLength(2);
-      expect(results[0].thumbnailUrl).toBe('https://images.org/curie.jpg');
-      expect(results[1].thumbnailUrl).toBe('https://images.org/nobel.jpg');
+      expect(results[0]?.thumbnailUrl).toBe('https://images.org/curie.jpg');
+      expect(results[1]?.thumbnailUrl).toBe('https://images.org/nobel.jpg');
     });
   });
 });

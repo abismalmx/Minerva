@@ -141,6 +141,7 @@ export class NativePageTurn extends CapturedPageTurn {
       void ack.finally(() => this.#cancellations.delete(ack));
     };
     signal?.addEventListener('abort', cancel, { once: true });
+    // biome-ignore lint/complexity/noUselessUndefinedInitialization: required for TS2454
     let restore: void | (() => void | Promise<void>) = undefined;
     try {
       restore = await this.host.preparePixelCapture?.();

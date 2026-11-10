@@ -205,7 +205,7 @@ export async function searchPersonImages(
   const combined: ImageSearchResult[] = [];
 
   for (const item of [...wiki, ...commons]) {
-    const urlKey = item.thumbnailUrl.split('?')[0];
+    const urlKey = item.thumbnailUrl.split('?')[0] ?? item.thumbnailUrl;
     if (!seenUrls.has(urlKey)) {
       seenUrls.add(urlKey);
       combined.push(item);

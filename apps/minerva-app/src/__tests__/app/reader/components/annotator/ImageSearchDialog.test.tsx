@@ -104,7 +104,9 @@ describe('ImageSearchDialog', () => {
 
     // Clicking the Select button on the card
     const selectButtons = screen.getAllByRole('button', { name: /select/i });
-    fireEvent.click(selectButtons[selectButtons.length - 1]);
+    const selectButton = selectButtons[selectButtons.length - 1];
+    expect(selectButton).toBeDefined();
+    fireEvent.click(selectButton!);
 
     expect(mockOnSelectImage).toHaveBeenCalledWith({
       title: 'Marie Curie',

@@ -12,7 +12,11 @@ declare global {
 export const isTauriAppPlatform = () =>
   process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'tauri' &&
   typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
+  Boolean(
+    (window as unknown as { __TAURI_INTERNALS__?: unknown; __TAURI__?: unknown })
+      .__TAURI_INTERNALS__ ||
+      (window as unknown as { __TAURI_INTERNALS__?: unknown; __TAURI__?: unknown }).__TAURI__,
+  );
 export const isWebAppPlatform = () => !isTauriAppPlatform();
 export const hasCli = () => window.__MINERVA_CLI_ACCESS === true;
 export const isPWA = () => window.matchMedia('(display-mode: standalone)').matches;

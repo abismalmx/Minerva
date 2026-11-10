@@ -299,7 +299,10 @@ class SelfHostedAuth {
    * Not available on a self-hosted deployment: there is no mail server. The
    * auth page hides the option, so this is only reached by an old build.
    */
-  async resetPasswordForEmail(): Promise<{ data: {}; error: AuthError | null }> {
+  async resetPasswordForEmail(): Promise<{
+    data: Record<string, never>;
+    error: AuthError | null;
+  }> {
     return {
       data: {},
       error: { message: 'Password recovery is not available on this server' },
