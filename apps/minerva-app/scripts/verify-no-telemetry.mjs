@@ -193,6 +193,7 @@ export function decompressBrotli(buffer) {
 // ---------------------------------------------------------------------------
 
 const isLower = (char) => char !== undefined && char >= 'a' && char <= 'z';
+const isUpper = (char) => char !== undefined && char >= 'A' && char <= 'Z';
 const isWordChar = (char) => char !== undefined && /[A-Za-z0-9_]/.test(char);
 
 /**
@@ -212,9 +213,23 @@ export function classifyOccurrence(text, index, vendor) {
   // "PostHog" has no benign spelling in this codebase.
   if (vendor === 'posthog') return 'telemetry';
 
-  // A vendor name glued to the end of another lowercase word is an unrelated
-  // identifier that merely contains it ("canvasEntry", "settingsEntry").
-  if (isLower(before) && isWordChar(after)) return 'incidental';
+  // Benign occurrences of "sentry" as part of standard system/library identifiers:
+  // 1. C++ std::basic_ostream::sentry (_ZNSo6sentry...)
+  // 2. JavaScriptCore JIT tag JSEntryPtrTag (JS + Entry)
+  if (vendor === 'sentry') {
+    if (
+      window.includes('jsentry') ||
+      window.includes('originaccessentry') ||
+      window.includes('ostream6sentry') ||
+      window.includes('_znso6sentry')
+    ) {
+      return 'incidental';
+    }
+  }
+
+  // A vendor name glued to the end of another lowercase or uppercase word is an unrelated
+  // identifier that merely contains it ("canvasEntry", "settingsEntry", "JSEntry").
+  if ((isLower(before) || isUpper(before)) && isWordChar(after)) return 'incidental';
 
   // A vendor name used as a prefix of a camelCase identifier ("SentryDsn")
   // or as a standalone word is telemetry.
