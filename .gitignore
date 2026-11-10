@@ -81,6 +81,10 @@ apps/minerva.koplugin/native/localsend-bin/target/
 *.apk
 *.aab
 *.ipa
+*.exe
+*.msi
+*.dll
+*.zip
 dist/
 squashfs-root/
 .wrangler/
