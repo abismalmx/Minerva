@@ -1,5 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import FoliateViewer from '@/app/reader/components/FoliateViewer';
 import type ImageViewer from '@/app/reader/components/ImageViewer';
@@ -120,6 +120,12 @@ vi.mock('@/app/reader/components/ImageViewer', () => ({
   },
 }));
 vi.mock('@/app/reader/components/TableViewer', () => ({ default: () => null }));
+
+// Each test appends its own section to the shared document; a leftover one
+// would add its images to the next test's list and shift the viewer's index.
+afterEach(() => {
+  document.body.innerHTML = '';
+});
 
 // Paging the viewer to the next image jumps the book there, which can take a
 // while when the image is in another section. The new picture must not borrow
