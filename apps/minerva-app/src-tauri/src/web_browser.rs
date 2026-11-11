@@ -573,7 +573,7 @@ pub async fn open_web_browser<R: tauri::Runtime>(
             }
             if keep_title {
                 if let Some(window) = nav_app.get_webview_window(&nav_label) {
-                    let _ = window.set_title(&companion_window_title(&companion_title, &url));
+                    let _ = window.set_title(&companion_window_title(&companion_title, url));
                 }
             }
             match url.scheme() {
