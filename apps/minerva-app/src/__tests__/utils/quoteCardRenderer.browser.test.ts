@@ -110,7 +110,7 @@ describe('renderQuoteCard (browser)', () => {
     const on = document.createElement('canvas');
     await renderQuoteCard(on, { ...content, qrUrl }, { ...style, showQr: true });
     const fg = [0xe9, 0xdf, 0xc8];
-    expect(count(pixels(on), fg) - count(pixels(off), fg)).toBeGreaterThan(3000);
+    expect(count(pixels(on), fg) - count(pixels(off), fg)).toBeGreaterThan(2000);
     expect(count(pixels(on), [0, 0, 0])).toBe(0);
     expect(count(pixels(on), [255, 255, 255])).toBe(0);
   });

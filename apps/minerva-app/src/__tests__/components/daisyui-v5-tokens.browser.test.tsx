@@ -96,8 +96,9 @@ describe('daisyUI 5 theme tokens', () => {
     const toggle = getByTestId('toggle');
     expect(box('toggle').width).toBe(48);
     expect(box('toggle').height).toBe(24);
-    expect(getComputedStyle(toggle).backgroundColor).toBe('rgb(255, 255, 255)');
-    expect(getComputedStyle(toggle, '::before').backgroundColor).toBe('rgb(23, 23, 23)');
+    // Minerva's light base-100 is warm paper (#faf8f4), not pure white.
+    expect(getComputedStyle(toggle).backgroundColor).toBe('rgb(250, 248, 244)');
+    expect(getComputedStyle(toggle, '::before').backgroundColor).toBe('rgb(38, 33, 27)');
     // Each size has its own v4 width, so the base pin must not flatten them.
     expect([box('toggle-sm').width, box('toggle-sm').height]).toEqual([32, 20]);
     expect([box('toggle-xs').width, box('toggle-xs').height]).toEqual([24, 16]);
