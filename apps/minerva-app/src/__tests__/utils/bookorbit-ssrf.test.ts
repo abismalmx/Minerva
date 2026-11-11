@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import handler, { isValidBookOrbitEndpoint } from '@/pages/api/bookorbit';
 import { isLanAddress } from '@/utils/network';
 
+const { publicFetchMock } = vi.hoisted(() => ({ publicFetchMock: vi.fn() }));
+vi.mock('@/utils/publicFetch', () => ({ publicFetch: publicFetchMock }));
+
 /**
  * The BookOrbit proxy shares the kosync proxy's SSRF posture: private/internal
  * server addresses are rejected via isLanAddress (covered in kosync-ssrf.test.ts)
@@ -91,8 +94,7 @@ const makeReq = (body: Record<string, unknown>) => ({
 
 describe('bookorbit proxy handler', () => {
   it('rejects private server addresses with 400 before any fetch', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    publicFetchMock.mockReset();
     const res = makeRes();
     await handler(
       makeReq({
@@ -103,16 +105,14 @@ describe('bookorbit proxy handler', () => {
       res as never,
     );
     expect(res.statusCode).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+    expect(publicFetchMock).not.toHaveBeenCalled();
   });
 
-  it('forwards allowed requests without following redirects', async () => {
-    const fetchMock = vi.fn(async () => ({
-      status: 200,
-      text: async () => '{"ok":true}',
-    }));
-    vi.stubGlobal('fetch', fetchMock);
+  // publicFetch checks the address of every connection, so a public name that
+  // resolves to an internal address (DNS rebinding) is refused too.
+  it('forwards allowed requests through the address-checked fetch', async () => {
+    publicFetchMock.mockReset();
+    publicFetchMock.mockResolvedValue({ status: 200, text: async () => '{"ok":true}' });
     const res = makeRes();
     await handler(
       makeReq({
@@ -123,12 +123,29 @@ describe('bookorbit proxy handler', () => {
       res as never,
     );
     expect(res.statusCode).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0]! as unknown as [string, RequestInit];
+    expect(publicFetchMock).toHaveBeenCalledTimes(1);
+    const [url] = publicFetchMock.mock.calls[0]! as unknown as [string];
     expect(url).toBe('https://books.example.com/api/v1/koreader/plugin/version');
-    // A redirecting upstream must fail rather than steer the proxy to a new
-    // host (redirect-based SSRF).
-    expect(init.redirect).toBe('error');
-    vi.unstubAllGlobals();
+  });
+
+  it('fails instead of forwarding a redirecting upstream', async () => {
+    publicFetchMock.mockReset();
+    publicFetchMock.mockResolvedValue({
+      status: 302,
+      headers: new Headers({ location: 'http://10.0.0.5/admin' }),
+      body: null,
+      text: async () => 'moved',
+    });
+    const res = makeRes();
+    await handler(
+      makeReq({
+        serverUrl: 'https://books.example.com',
+        endpoint: '/plugin/version',
+        method: 'GET',
+      }) as never,
+      res as never,
+    );
+    expect(res.statusCode).toBe(500);
+    expect(publicFetchMock).toHaveBeenCalledTimes(1);
   });
 });

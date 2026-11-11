@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { corsAllMethods, runMiddleware } from '@/utils/cors';
 import { isLanAddress } from '@/utils/network';
+import { publicFetch } from '@/utils/publicFetch';
 import type { BookOrbitProxyPayload } from '@/types/bookorbit';
 
 const validEndpoints = [
@@ -57,7 +58,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const targetUrl = `${serverUrl.replace(/\/$/, '')}/api/v1/koreader${endpoint}`;
 
   try {
-    const response = await fetch(targetUrl, {
+    // publicFetch refuses connections to private addresses even when a public
+    // name resolves to one (DNS rebinding), which the hostname check above
+    // cannot see. It never follows redirects.
+    const response = await publicFetch(targetUrl, {
       method: method,
       headers: {
         ...clientHeaders,
@@ -65,11 +69,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Content-Type': 'application/json',
       },
       body: clientBody ? JSON.stringify(clientBody) : null,
-      // Never follow redirects: a public server answering 3xx could steer the
-      // proxy onto a private address that the isLanAddress gate above already
-      // rejected (redirect-based SSRF).
-      redirect: 'error',
     });
+    // A public server answering 3xx could steer the proxy onto a private
+    // address that the isLanAddress gate above already rejected.
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new Error('Redirect destination is not allowed');
+    }
 
     const data = await response.text();
     res.status(response.status);
