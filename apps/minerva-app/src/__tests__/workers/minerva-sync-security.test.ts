@@ -6,8 +6,8 @@ import { describe, it, expect } from 'vitest';
 // Each test encodes an invariant that an audit (auditor_security, 2026-10-28)
 // found broken. They fail on the vulnerable code and pass on the fixed one:
 //
-// - SEC-01: the KOSync MD5 digest must never land in `users.passhash`, the
-//   column the native login compares a SHA-256 against.
+// - SEC-01: no digest of the passphrase besides the stretched `passhash` may be
+//   stored: `users.userkey` holds only a sentinel.
 // - SEC-02: a failed sign-in must eventually be refused (429), so a passphrase
 //   cannot be guessed by brute force.
 // - SEC-03: the bytes actually written must respect MAX_UPLOAD_BYTES, not only
@@ -18,11 +18,11 @@ import { describe, it, expect } from 'vitest';
 //   registration with an uncaught UNIQUE violation.
 
 import {
-  deriveKoSyncUsername,
+  deriveUsername,
   isUniqueViolation,
-  KOSYNC_ONLY_PASSHASH,
   MAX_LOGIN_ATTEMPTS,
   normalizeEmail,
+  UNUSED_USERKEY,
 } from '../../../workers/minerva-sync/src/accounts';
 import { mintTicket } from '../../../workers/minerva-sync/src/storageTicket';
 
@@ -195,26 +195,7 @@ const jsonBody = (obj: unknown) => ({
 
 /* ------------------------------------------------------------------ */
 
-describe('SEC-01: la credencial KOSync (MD5) no ocupa el campo de la nativa (SHA-256)', () => {
-  it('el alta KOSync guarda el centinela en passhash y el MD5 solo en userkey', async () => {
-    const { handleKoSyncCreate } = await import('../../../workers/minerva-sync/src/kosync');
-    const env = makeEnv();
-    const md5 = 'a'.repeat(32);
-    const res = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: 'bob', password: md5 })),
-      env,
-    );
-    expect(res.status).toBe(201);
-    const stored = env.SYNC_DB.users[0]!;
-    expect(stored['passhash']).toBe(KOSYNC_ONLY_PASSHASH);
-    expect(stored['passhash']).not.toBe(stored['userkey']);
-    // The key is stored salted: the value in the table is not the credential
-    // the client sends, so a dump of it cannot be replayed against the
-    // KOSync surface.
-    expect(stored['userkey']).not.toBe(md5);
-    expect(String(stored['userkey'])).toMatch(/^kosync-sha256\$/);
-  });
-
+describe('SEC-01: la cuenta solo guarda el hash estirado de la passphrase', () => {
   it('el alta nativa guarda un hash estirado en passhash, no el MD5', async () => {
     const { handleRegister } = await import('../../../workers/minerva-sync/src/accounts');
     const env = makeEnv();
@@ -230,7 +211,7 @@ describe('SEC-01: la credencial KOSync (MD5) no ocupa el campo de la nativa (SHA
     // The passphrase is stretched with PBKDF2 and salted, so the table holds
     // neither the passphrase nor a digest of it that a GPU could attack.
     expect(String(stored['passhash'])).toMatch(/^(argon2id|pbkdf2-sha256)\$/);
-    expect(String(stored['userkey'])).toMatch(/^kosync-sha256\$/);
+    expect(stored['userkey']).toBe(UNUSED_USERKEY);
     expect(stored['passhash']).not.toBe(stored['userkey']);
   });
 });
@@ -419,8 +400,8 @@ describe('SEC-05: el alta nativa no colisiona por el prefijo del email', () => {
   });
 
   it('el username derivado es unico por cuenta', () => {
-    const a = deriveKoSyncUsername('alice@corp.example', '11111111-2222-3333-4444-555555555555');
-    const b = deriveKoSyncUsername('alice@other.example', '66666666-7777-8888-9999-000000000000');
+    const a = deriveUsername('alice@corp.example', '11111111-2222-3333-4444-555555555555');
+    const b = deriveUsername('alice@other.example', '66666666-7777-8888-9999-000000000000');
     expect(a).not.toBe(b);
     expect(a.startsWith('alice-')).toBe(true);
   });
@@ -433,7 +414,7 @@ describe('SEC-05: el alta nativa no colisiona por el prefijo del email', () => {
   });
 });
 
-describe('helpers de la superficie KOSync', () => {
+describe('helpers del Worker', () => {
   it('el ticket sigue ligado a su clave', async () => {
     const { verifyTicket } = await import('../../../workers/minerva-sync/src/storageTicket');
     const ticket = await mintTicket(SECRET, 'user-1/book.epub');

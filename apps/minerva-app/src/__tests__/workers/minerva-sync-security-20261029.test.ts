@@ -9,16 +9,13 @@
  *
  * - SEC-08: the sign-in throttle table must not grow without bound from the
  *   unauthenticated routes. The native login validates the email (it is the
- *   key of the counter row) and the KOSync surface only accepts a name it
- *   would accept as an account name (the name is the key too).
- * - SEC-09: the KOSync registration has the same rate limit and the same
- *   username bound as the native one.
+ *   key of the counter row).
+ * - SEC-09: the registration bounds the username it accepts.
  * - SEC-10: changing the account email re-validates the passphrase and moves
  *   the sign-in throttle to the new address.
  */
 import { describe, it, expect } from 'vitest';
 
-import { handleKoSyncCreate, authenticateKoSync } from '../../../workers/minerva-sync/src/kosync';
 import {
   handleRegister,
   handleLogin,
@@ -67,16 +64,6 @@ const countAttempts = (env: TestEnv): number =>
     (env.SYNC_DB.db.prepare('SELECT COUNT(*) AS n FROM login_attempts').get() as { n: number }).n,
   );
 
-/** The longest key the sign-in throttle table holds. */
-const maxAttemptKeyLength = (env: TestEnv): number =>
-  Number(
-    (
-      env.SYNC_DB.db.prepare('SELECT MAX(LENGTH(email)) AS n FROM login_attempts').get() as {
-        n: number;
-      }
-    ).n,
-  );
-
 describe('SEC-08: la tabla de bloqueo no crece sin limite desde rutas no autenticadas', () => {
   it('el login nativo rechaza un email que no es un email', async () => {
     const env = makeEnv();
@@ -109,65 +96,14 @@ describe('SEC-08: la tabla de bloqueo no crece sin limite desde rutas no autenti
     expect(Number(row?.attempts ?? 0)).toBe(3);
     expect(countAttempts(env)).toBe(before + 1);
   });
-
-  it('la superficie KOSync no acepta un nombre que no seria un nombre de cuenta', async () => {
-    const env = makeEnv();
-    const user = await authenticateKoSync(
-      env as never,
-      new Request('https://worker.test/syncs/progress', {
-        headers: { 'x-auth-user': 'z'.repeat(100000), 'x-auth-key': 'wrong' },
-      }),
-    );
-    expect(user).toBeNull();
-    // The name is the key of the counter row: a name the surface would never
-    // accept as an account name must not become a row.
-    expect(countAttempts(env)).toBe(0);
-    expect(maxAttemptKeyLength(env)).toBe(0);
-  });
-
-  it('un nombre KOSync normal mal escrito sigue contando el intento', async () => {
-    const env = makeEnv();
-    for (let i = 0; i < 3; i++) {
-      await authenticateKoSync(
-        env as never,
-        new Request('https://worker.test/syncs/progress', {
-          headers: { 'x-auth-user': 'alice', 'x-auth-key': 'wrong' },
-        }),
-      );
-    }
-    const row = env.SYNC_DB.db
-      .prepare('SELECT attempts FROM login_attempts WHERE email = ?')
-      .get('kosync:alice') as { attempts: number } | undefined;
-    expect(Number(row?.attempts ?? 0)).toBe(3);
-  });
 });
 
-describe('SEC-09: el alta KOSync tiene el mismo limite que la alta nativa', () => {
-  it('el alta KOSync se limita (429) como la nativa', async () => {
-    const env = makeEnv();
-    let created = 0;
-    let lastStatus = 0;
-    for (let i = 0; i < 30; i++) {
-      const res = await handleKoSyncCreate(
-        req('/users/create', jsonBody({ username: `attacker-${i}`, password: 'a'.repeat(32) })),
-        env as never,
-      );
-      lastStatus = res.status;
-      if (res.status === 201) created++;
-    }
-    expect(lastStatus).toBe(429);
-    expect(created).toBeLessThan(30);
-    const users = Number(
-      (env.SYNC_DB.db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n,
-    );
-    expect(users).toBe(created);
-  });
-
-  it('el username KOSync esta acotado en longitud', async () => {
+describe('SEC-09: el alta acota el username', () => {
+  it('un username enorme se rechaza sin crear la cuenta', async () => {
     const env = makeEnv();
     const huge = 'u'.repeat(50000);
-    const res = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: huge, password: 'b'.repeat(32) })),
+    const res = await handleRegister(
+      req('/api/auth/register', jsonBody({ username: huge, passphrase: PASSPHRASE })),
       env as never,
     );
     expect(res.status).toBe(400);
@@ -177,10 +113,10 @@ describe('SEC-09: el alta KOSync tiene el mismo limite que la alta nativa', () =
     expect(row).toBeUndefined();
   });
 
-  it('un username KOSync normal se acepta', async () => {
+  it('un username normal se acepta', async () => {
     const env = makeEnv();
-    const res = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: 'alice', password: 'c'.repeat(32) })),
+    const res = await handleRegister(
+      req('/api/auth/register', jsonBody({ username: 'alice', passphrase: PASSPHRASE })),
       env as never,
     );
     expect(res.status).toBe(201);

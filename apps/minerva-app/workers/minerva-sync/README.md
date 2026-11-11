@@ -9,7 +9,6 @@ It serves two API surfaces:
 | Surface | Routes | Who speaks it |
 | --- | --- | --- |
 | Native Minerva sync API | `/api/sync`, `/api/sync/replicas`, `/api/sync/replica-keys`, `/api/storage/*`, `/api/auth/*`, `/api/user/*` | The Minerva app (desktop, mobile, web) |
-| KOSync-compatible API | `/users/create`, `/users/auth`, `/syncs/progress` | KOReader, and Minerva's own "KOReader Sync" integration |
 
 The native surface is the SAME contract the hosted backend exposes
 (`apps/minerva-app/src/pages/api` and `src/app/api`), so an unmodified Minerva
@@ -62,9 +61,9 @@ The migrations are ordered and each one is applied exactly once:
 
 | File | What it does |
 | --- | --- |
-| `0001_init.sql` | The whole schema: accounts, throttle, library, notes, files, stats, replicas, salts, KOSync progress, and the `book_highlights` / `book_bookmarks` views. |
+| `0001_init.sql` | The whole schema: accounts, throttle, library, notes, files, stats, replicas, salts, KOSync progress (no longer written), and the `book_highlights` / `book_bookmarks` views. |
 | `0002_login_attempts.sql` | The sign-in throttle table, for databases that ran the first schema before it had one. |
-| `0003_kosync_progress.sql` | The KOSync progress table and the two views, for the same reason. |
+| `0003_kosync_progress.sql` | The KOSync progress table and the two views, for the same reason. The Worker no longer serves KOSync; the table stays so existing databases keep migrating and is emptied with the account. |
 | `0004_replicas_canonical_row.sql` | Rebuilds `replicas` with one row per `(kind, replica_id)` and folds the versions a pre-release schema had appended. |
 
 ## 3. Set the signing secret
@@ -133,7 +132,7 @@ Settings → Sync passphrase section.
 
 | Route | Notes |
 | --- | --- |
-| `POST /api/auth/register` | `{ email, passphrase }` — or `{ email, passhash }` with a SHA-256 the client computed itself. An optional `username` names the account on the KOSync surface. |
+| `POST /api/auth/register` | `{ email, passphrase }` — or `{ email, passhash }` with a SHA-256 the client computed itself. An optional `username` names the account; otherwise one is derived from the email. |
 | `POST /api/auth/login` | `{ email, passphrase }` — or `{ email, passhash }`. Answers `429` once the account is locked out. |
 | `GET /api/auth/me` | The account and its plan. |
 | `POST /api/auth/email` | Changes the email. |
@@ -185,37 +184,20 @@ uses (`src/crdt.ts`):
 Two devices pushing the same replica at the same time is safe: the write is a
 compare-and-set on the row's clock, and a lost race re-reads and re-merges.
 
-## Using the KOSync surface
-
-The Worker also speaks the KOReader Sync protocol, so KOReader — and Minerva's
-own "KOReader Sync" integration — can use it as their sync server:
-
-- **Server URL**: the Worker's origin, e.g. `https://sync.example.com`
-- **Username**: the email you signed up with (the derived KOSync username
-  works too)
-- **Password**: the passphrase you signed up with
-
-KOReader hashes the password with MD5 before sending it, so the server never
-receives the passphrase itself.
-
 ## How the account passphrase is stored
 
 The Worker never stores the account passphrase. What it stores is derived from
 it, and the derivation is deliberately slow:
 
-- **Native surface** — `PBKDF2-HMAC-SHA256` with a random 16-byte salt per
+- `PBKDF2-HMAC-SHA256` with a random 16-byte salt per
   account, 600 000 iterations by default (`PASSPHRASE_KDF_ITERATIONS` in
   `wrangler.toml`; the count is stored with each hash, so lowering it never
   invalidates the accounts that already exist). A dump of the `users` table is
   therefore not enough to recover a passphrase, not even a weak one.
-- **KOSync surface** — the protocol fixes the credential to `md5(password)` and
-  the client computes it, so the Worker cannot stretch it. It is still salted:
-  the stored value is not the credential, so a dump of the table cannot be
-  replayed against the KOSync surface.
-
-Accounts created before this change hold an unsalted SHA-256 and a bare MD5.
-They keep working: the first sign-in with the passphrase re-derives both values
-with the current scheme, so a deployment needs no migration.
+Accounts created before this change hold an unsalted SHA-256 and, in the
+`userkey` column, a digest of the passphrase left over from KOSync. They keep
+working: the first sign-in with the passphrase re-stretches the first and clears
+the second, so a deployment needs no migration.
 
 ## What is stored where
 
@@ -228,7 +210,6 @@ with the current scheme, so a deployment needs no migration.
 | Notes, highlights, bookmarks, ink | D1 `book_notes` (also readable through the `book_highlights` and `book_bookmarks` views) |
 | Reading statistics | D1 `stat_books`, `stat_pages` |
 | Synced settings, shelves, translators | D1 `replicas`, `replica_keys` |
-| KOReader progress | D1 `kosync_progress` |
 | Book files, covers, replica blobs | R2 `minerva-library` |
 
 Every row is scoped by `user_id` and every query filters on it, so one account

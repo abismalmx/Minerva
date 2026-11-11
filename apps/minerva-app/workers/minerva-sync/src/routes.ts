@@ -1,17 +1,10 @@
 /**
  * Route dispatch for the self-hosted sync Worker.
  *
- * Two API surfaces are served over one Worker:
- *
- * 1. **The native Minerva sync API** — `/api/sync`, `/api/sync/replicas`,
- *    `/api/sync/replica-keys`, `/api/storage/*`, `/api/auth/*`. This is the
- *    same contract the hosted backend exposes (apps/minerva-app/src/pages/api
- *    and src/app/api), so an unmodified Minerva build can talk to it by
- *    pointing `API_BASE_URL` at this Worker.
- *
- * 2. **A KOSync-compatible API** — `/users/create`, `/users/auth`,
- *    `/syncs/progress`, so KOReader (and Minerva's own KOReader Sync
- *    integration) can use the same backend.
+ * The native Minerva sync API — `/api/sync`, `/api/sync/replicas`,
+ * `/api/sync/replica-keys`, `/api/storage/*`, `/api/auth/*` — is the only
+ * surface. An unmodified Minerva build talks to it by pointing `API_BASE_URL`
+ * at this Worker.
  *
  * Data lives in D1 (SQLite) and the book files in R2.
  */
@@ -44,13 +37,6 @@ import {
   handleRegister,
   handleUpdateEmail,
 } from './accounts';
-import {
-  authenticateKoSync,
-  handleKoSyncAuth,
-  handleKoSyncCreate,
-  handleKoSyncProgressGet,
-  handleKoSyncProgressPut,
-} from './kosync';
 
 /** Resolve the caller's account from the bearer token, or answer 401. */
 export const requireUser = async (
@@ -73,28 +59,6 @@ export const requireUser = async (
     .first<{ id: string }>();
   if (!account) return { response: errorJson('Not authenticated', 401) };
   return { userId: claims.sub };
-};
-
-/** The KOSync surface, mounted at the root (KOReader expects it there). */
-const handleKoSyncRoute = async (request: Request, env: Env, path: string): Promise<Response> => {
-  if (path === '/users/create' && request.method === 'POST') {
-    return handleKoSyncCreate(request, env);
-  }
-  if (path === '/users/auth' && request.method === 'GET') {
-    return handleKoSyncAuth(request, env);
-  }
-  if (path === '/syncs/progress') {
-    const user = await authenticateKoSync(env, request);
-    if (!user) return errorJson('Unauthorized', 401);
-    if (request.method === 'PUT') return handleKoSyncProgressPut(request, env, user);
-  }
-  if (path.startsWith('/syncs/progress/')) {
-    const user = await authenticateKoSync(env, request);
-    if (!user) return errorJson('Unauthorized', 401);
-    const document = path.slice('/syncs/progress/'.length);
-    if (request.method === 'GET') return handleKoSyncProgressGet(env, user, document);
-  }
-  return errorJson('Not Found', 404);
 };
 
 /** The native Minerva API, mounted under `/api`. */
@@ -180,7 +144,7 @@ export const routeRequest = async (request: Request, env: Env, path: string): Pr
   if (path.startsWith('/api/')) {
     return handleApiRoute(request, env, path.slice('/api'.length));
   }
-  return handleKoSyncRoute(request, env, path);
+  return errorJson('Not Found', 404);
 };
 
 /** The service description served at the root. */

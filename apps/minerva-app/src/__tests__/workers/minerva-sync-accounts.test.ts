@@ -14,14 +14,9 @@ import {
   handleRegister,
   MAX_LOGIN_ATTEMPTS,
   MAX_REGISTRATIONS_PER_GLOBAL_WINDOW,
-  NO_KOSYNC_USERKEY,
+  UNUSED_USERKEY,
 } from '../../../workers/minerva-sync/src/accounts';
-import {
-  authenticateKoSync,
-  handleKoSyncAuth,
-  handleKoSyncCreate,
-} from '../../../workers/minerva-sync/src/kosync';
-import { md5Hex, sha256Hex } from '../../../workers/minerva-sync/src/crypto';
+import { sha256Hex } from '../../../workers/minerva-sync/src/crypto';
 import { verifyToken } from '../../../workers/minerva-sync/src/auth';
 import { MemoryR2, SqliteD1, TEST_SECRET } from './minerva-sync-doubles';
 
@@ -195,124 +190,6 @@ describe('el bloqueo por intentos fallidos', () => {
   });
 });
 
-describe('la superficie KOSync', () => {
-  const kosyncHeaders = (username: string, userkey: string) => ({
-    'x-auth-user': username,
-    'x-auth-key': userkey,
-  });
-
-  it('acepta el email de la cuenta nativa como nombre de usuario', async () => {
-    const env = makeEnv();
-    await register(env, 'alice@example.com');
-    const digest = await md5Hex(PASSPHRASE);
-
-    const response = await handleKoSyncAuth(
-      req('/users/auth', { headers: kosyncHeaders('alice@example.com', digest) }),
-      env as never,
-    );
-    expect(response.status).toBe(200);
-  });
-
-  it('acepta el nombre de usuario derivado de la cuenta nativa', async () => {
-    const env = makeEnv();
-    await register(env, 'alice@example.com');
-    const digest = await md5Hex(PASSPHRASE);
-
-    const row = await env.SYNC_DB.prepare('SELECT username FROM users WHERE email = ?')
-      .bind('alice@example.com')
-      .first<{ username: string }>();
-    const response = await handleKoSyncAuth(
-      req('/users/auth', { headers: kosyncHeaders(row!.username, digest) }),
-      env as never,
-    );
-    expect(response.status).toBe(200);
-  });
-
-  it('rechaza un digest equivocado y frena los intentos', async () => {
-    const env = makeEnv();
-    await register(env, 'alice@example.com');
-    const row = await env.SYNC_DB.prepare('SELECT username FROM users WHERE email = ?')
-      .bind('alice@example.com')
-      .first<{ username: string }>();
-    const username = row!.username;
-
-    for (let attempt = 0; attempt < MAX_LOGIN_ATTEMPTS; attempt++) {
-      const failed = await handleKoSyncAuth(
-        req('/users/auth', { headers: kosyncHeaders('alice@example.com', 'a'.repeat(32)) }),
-        env as never,
-      );
-      expect(failed.status).toBe(401);
-    }
-
-    // The counter is keyed by the ACCOUNT, so presenting the email instead of
-    // the username does not reset it: the account is now locked.
-    const locked = await handleKoSyncAuth(
-      req('/users/auth', { headers: kosyncHeaders(username, 'a'.repeat(32)) }),
-      env as never,
-    );
-    expect(locked.status).toBe(401);
-
-    const attempts = await env.SYNC_DB.prepare(
-      'SELECT attempts, locked_until FROM login_attempts WHERE email = ?',
-    )
-      .bind(`kosync:${username}`)
-      .first<{ attempts: number; locked_until: number | null }>();
-    expect(Number(attempts?.attempts ?? 0)).toBeGreaterThanOrEqual(MAX_LOGIN_ATTEMPTS);
-    expect(Number(attempts?.locked_until ?? 0)).toBeGreaterThan(Math.floor(Date.now() / 1000));
-
-    // The right digest does not get in while the lockout lasts.
-    const digest = await md5Hex(PASSPHRASE);
-    expect(
-      (
-        await handleKoSyncAuth(
-          req('/users/auth', { headers: kosyncHeaders(username, digest) }),
-          env as never,
-        )
-      ).status,
-    ).toBe(401);
-
-    // Once the window passes the account works again.
-    await env.SYNC_DB.prepare('UPDATE login_attempts SET locked_until = ? WHERE email = ?')
-      .bind(Math.floor(Date.now() / 1000) - 1, `kosync:${username}`)
-      .run();
-    const recovered = await handleKoSyncAuth(
-      req('/users/auth', { headers: kosyncHeaders(username, digest) }),
-      env as never,
-    );
-    expect(recovered.status).toBe(200);
-  });
-
-  it('crea una cuenta KOSync sin tocar el passhash nativo', async () => {
-    const env = makeEnv();
-    const digest = await md5Hex('kosync-passphrase');
-    const response = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: 'reader', password: digest })),
-      env as never,
-    );
-    expect(response.status).toBe(201);
-
-    const row = await env.SYNC_DB.prepare('SELECT passhash, userkey FROM users WHERE username = ?')
-      .bind('reader')
-      .first<{ passhash: string; userkey: string }>();
-    expect(row?.userkey).not.toBe(digest);
-    // The key is salted, so the table does not hold the credential itself.
-    expect(String(row?.userkey)).toMatch(/^kosync-sha256\$/);
-    // The MD5 never occupies the column the native login compares a stretched
-    // hash against, so the native login can never accept it.
-    expect(row?.passhash).not.toBe(digest);
-    expect(row?.passhash).not.toMatch(/^[0-9a-f]{64}$/);
-  });
-
-  it('rechaza un alta KOSync con una contraseña que no es un digest MD5', async () => {
-    const env = makeEnv();
-    const response = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: 'reader', password: 'plain-text' })),
-      env as never,
-    );
-    expect(response.status).toBe(400);
-  });
-});
-
 describe('las formas de credencial que admite el alta', () => {
   it('acepta un nombre de usuario propio', async () => {
     const env = makeEnv();
@@ -378,29 +255,21 @@ describe('las formas de credencial que admite el alta', () => {
     expect(response.status).toBe(401);
   });
 
-  it('una cuenta con passhash no puede entrar por la superficie KOSync', async () => {
+  it('toda cuenta guarda el centinela en userkey, nunca un valor derivado de la credencial', async () => {
     const env = makeEnv();
     const passhash = await sha256Hex(PASSPHRASE);
     await handleRegister(
       req('/api/auth/register', jsonBody({ email: 'alice@example.com', passhash })),
       env as never,
     );
+    await register(env, 'bob@example.com');
 
-    // The KOSync key is md5(passphrase), and a SHA-256 cannot be turned into
-    // one. The account keeps a sentinel so the column never matches a real
-    // digest.
-    const row = await env.SYNC_DB.prepare('SELECT userkey FROM users WHERE email = ?')
-      .bind('alice@example.com')
-      .first<{ userkey: string }>();
-    expect(row?.userkey).toBe(NO_KOSYNC_USERKEY);
-
-    const user = await authenticateKoSync(
-      env as never,
-      req('/users/auth', {
-        headers: { 'x-auth-user': 'alice@example.com', 'x-auth-key': await md5Hex(PASSPHRASE) },
-      }),
-    );
-    expect(user).toBeNull();
+    for (const email of ['alice@example.com', 'bob@example.com']) {
+      const row = await env.SYNC_DB.prepare('SELECT userkey FROM users WHERE email = ?')
+        .bind(email)
+        .first<{ userkey: string }>();
+      expect(row?.userkey).toBe(UNUSED_USERKEY);
+    }
   });
 });
 
@@ -431,7 +300,7 @@ describe('el borrado de la cuenta y de la biblioteca', () => {
     expect(accounts.results).toHaveLength(1);
   });
 
-  it('borrar la cuenta se lleva el progreso KOSync', async () => {
+  it('borrar la cuenta se lleva el progreso KOSync heredado', async () => {
     const env = makeEnv();
     await register(env, 'alice@example.com');
     const user = await env.SYNC_DB.prepare('SELECT id FROM users WHERE email = ?')

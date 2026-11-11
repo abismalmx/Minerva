@@ -8,7 +8,6 @@
  *
  * Grupo A — hallazgos ya corregidos por la sesion paralela (regresion):
  *   A-01 el reloj por campo de un envelope se valida contra el desvio.
- *   A-02 el alta KOSync rechaza un nombre con forma de correo.
  *   A-03 el bloqueo por intentos fallidos decae al caducar.
  *   A-04 el registro de cuentas tiene limite de ritmo.
  *
@@ -25,11 +24,6 @@
 import { describe, it, expect } from 'vitest';
 
 import { handleReplicaPost } from '../../../workers/minerva-sync/src/replicas';
-import {
-  handleKoSyncCreate,
-  authenticateKoSync,
-  handleKoSyncProgressPut,
-} from '../../../workers/minerva-sync/src/kosync';
 import { handleLogin, handleRegister } from '../../../workers/minerva-sync/src/accounts';
 import { handleSyncGet } from '../../../workers/minerva-sync/src/pull';
 import {
@@ -136,34 +130,6 @@ describe('A · regresión de hallazgos ya corregidos', () => {
       USER_ID,
     );
     expect(response.status).toBe(409);
-  });
-
-  it('A-02 el alta KOSync rechaza un nombre con forma de correo', async () => {
-    const env = makeEnv();
-    const response = await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: 'victima@example.com', password: 'a'.repeat(32) })),
-      env as never,
-    );
-    expect(response.status).toBe(400);
-  });
-
-  it('A-02 la cuenta nativa no queda sombreada en la superficie KOSync', async () => {
-    const env = makeEnv();
-    const email = 'victima2@example.com';
-    const passphrase = 'una-passphrase-larga';
-    await handleRegister(req('/api/auth/register', jsonBody({ email, passphrase })), env as never);
-    await handleKoSyncCreate(
-      req('/users/create', jsonBody({ username: email, password: 'a'.repeat(32) })),
-      env as never,
-    );
-    const { md5Hex } = await import('../../../workers/minerva-sync/src/crypto');
-    const user = await authenticateKoSync(
-      env as never,
-      req('/users/auth', {
-        headers: { 'x-auth-user': email, 'x-auth-key': await md5Hex(passphrase) },
-      }),
-    );
-    expect(user).not.toBeNull();
   });
 
   it('A-03 el bloqueo por intentos fallidos decae al caducar', async () => {
@@ -300,48 +266,6 @@ describe('B · hallazgos corregidos por esta auditoría', () => {
       USER_ID,
     );
     expect(response.status).toBe(201);
-  });
-
-  it('B-05 `PUT /syncs/progress` acota el tamaño de lo que guarda', async () => {
-    const env = makeEnv();
-    const user = { id: 'u1', username: 'u1', userkey: 'k' };
-
-    const longDocument = await handleKoSyncProgressPut(
-      req('/syncs/progress', jsonBody({ document: 'd'.repeat(5000), progress: '' })),
-      env as never,
-      user,
-    );
-    expect(longDocument.status).toBe(400);
-
-    const hugeMetadata = await handleKoSyncProgressPut(
-      req(
-        '/syncs/progress',
-        jsonBody({ document: 'a'.repeat(32), progress: '', metadata: 'm'.repeat(200 * 1024) }),
-      ),
-      env as never,
-      user,
-    );
-    expect(hugeMetadata.status).toBe(400);
-  });
-
-  it('B-05 `PUT /syncs/progress` sigue aceptando una posicion normal', async () => {
-    const env = makeEnv();
-    const user = { id: 'u1', username: 'u1', userkey: 'k' };
-    const response = await handleKoSyncProgressPut(
-      req(
-        '/syncs/progress',
-        jsonBody({
-          document: '0123456789abcdef0123456789abcdef',
-          progress: JSON.stringify({ page: 12 }),
-          percentage: 0.4,
-          device: 'kobo',
-          device_id: 'abc',
-        }),
-      ),
-      env as never,
-      user,
-    );
-    expect(response.status).toBe(200);
   });
 
   it('B-06 `GET /api/storage/list` aguanta una búsqueda larga', async () => {

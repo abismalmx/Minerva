@@ -7,10 +7,9 @@
  * and on every platform: **email + passphrase**.
  *
  * The passphrase never leaves the device in a recoverable form: the Worker
- * stores only what it derives from it — a stretched, salted PBKDF2 digest
- * (`users.passhash`) and a salted digest of the KOSync-compatible MD5
- * (`users.userkey`). Both are derived server-side from the passphrase the
- * client sends over TLS.
+ * stores only what it derives from it — a stretched, salted digest
+ * (`users.passhash`), derived server-side from the passphrase the client sends
+ * over TLS.
  *
  * The client stores the returned bearer token and uses it for every API call,
  * exactly as it does with a Supabase session token.
@@ -19,11 +18,8 @@
 import { errorJson, json, readJson, type Env } from './http';
 import {
   createArgon2idHash,
-  createKoSyncUserkey,
   createPassphraseHash,
-  isKoSyncUserkey,
   isLegacyPassphraseHash,
-  md5Hex,
   MIN_PASSPHRASE_KDF_ITERATIONS,
   MAX_PASSPHRASE_KDF_ITERATIONS,
   PASSPHRASE_KDF_ITERATIONS,
@@ -77,48 +73,26 @@ export const isValidUsername = (username: string): boolean =>
   /^[A-Za-z0-9._-]{3,64}$/.test(username);
 
 /**
- * The `passhash` value stored for an account that only exists on the KOSync
- * surface.
+ * The `userkey` value stored for every account.
  *
- * The KOSync protocol (KOReader) sends `md5(password)` as the credential and
- * the Worker can only ever compare digests — it never sees the passphrase.
- * Storing that MD5 in `users.passhash` would put a 128-bit hash in the column
- * the NATIVE login compares a SHA-256 against (`handleLogin`), so the two
- * surfaces would disagree about what the credential of a single account is.
- *
- * This sentinel is stored instead: it is not a digest of anything, so the
- * native login can never accept it, and it makes the account's nature
- * explicit in the database rather than silently wrong.
+ * The column is a leftover of the KOSync protocol (an MD5-derived account key)
+ * that the Worker no longer serves. It stays in the schema, so each account
+ * keeps this sentinel instead of a credential-derived value.
  */
-export const KOSYNC_ONLY_PASSHASH = 'k';
+export const UNUSED_USERKEY = 'none';
 
-/**
- * The `userkey` value stored for an account registered with a pre-computed
- * passphrase digest.
- *
- * The KOSync account key is `md5(passphrase)`, and a passphrase digest does
- * not carry the information needed to derive it. Such an account therefore
- * authenticates on the native surface only; the sentinel makes that visible
- * in the database instead of leaving an empty key that would match anything.
- *
- * It cannot collide with a real key: a KOSync key is 32 hexadecimal digits,
- * and this sentinel is not hexadecimal.
- */
-export const NO_KOSYNC_USERKEY = 'none';
-
-/** The longest email prefix kept in a derived KOSync username. */
+/** The longest email prefix kept in a derived username. */
 const MAX_USERNAME_PREFIX_LENGTH = 64;
 
 /**
- * A unique KOSync username for a native account.
+ * A unique username for a native account.
  *
- * The username doubles as the KOSync account name, so it must be unique. It
- * is derived from the email prefix, but the prefix alone is NOT unique (two
+ * It is derived from the email prefix, but the prefix alone is NOT unique (two
  * accounts `alice@corp.example` and `alice@other.example` share it) and the
  * column carries a UNIQUE index — so the prefix is suffixed with a short
  * slice of the account id.
  */
-export const deriveKoSyncUsername = (email: string, accountId: string): string => {
+export const deriveUsername = (email: string, accountId: string): string => {
   const raw = (email.split('@')[0] ?? accountId).replace(/[^A-Za-z0-9._-]/g, '-');
   const prefix = raw.slice(0, MAX_USERNAME_PREFIX_LENGTH);
   const suffix = accountId.replace(/-/g, '').slice(0, 8).toLowerCase();
@@ -128,8 +102,7 @@ export const deriveKoSyncUsername = (email: string, accountId: string): string =
 /**
  * A username the caller supplied, if it is usable.
  *
- * The username is the KOSync account name, so it has to survive the KOSync
- * clients' character set. An unusable value is ignored rather than rejected:
+ * An unusable value is ignored rather than rejected:
  * the caller asked for an account, and the derived name serves the same
  * purpose.
  */
@@ -161,14 +134,12 @@ export const isUniqueViolation = (error: unknown): boolean => {
  * The credential may arrive in either of the two forms the spec allows:
  *
  * - `passphrase` (or `password`) — the plaintext passphrase, over TLS. The
- *   Worker derives both digests from it. This is what the Minerva client
- *   sends.
+ *   Worker stretches it. This is what the Minerva client sends.
  * - `passhash` — a SHA-256 digest the caller computed itself. The Worker
- *   stores it as-is. It cannot derive the KOSync account key from it, so such
- *   an account authenticates on the native surface only.
+ *   stores it as-is.
  *
- * `username` is optional: it is the name the account answers to on the
- * KOSync surface. When it is omitted, a unique one is derived from the email.
+ * `username` is optional: when it is omitted, a unique one is derived from the
+ * email.
  */
 export const handleRegister = async (request: Request, env: Env): Promise<Response> => {
   const body = await readJson<{
@@ -191,7 +162,7 @@ export const handleRegister = async (request: Request, env: Env): Promise<Respon
   if (rawIdentifier.includes('@')) {
     email = normalizeEmail(rawIdentifier);
     if (!isValidEmail(email)) return errorJson('Invalid email address', 400);
-    username = sanitizeUsername(body?.username) ?? deriveKoSyncUsername(email, id);
+    username = sanitizeUsername(body?.username) ?? deriveUsername(email, id);
   } else {
     username = rawIdentifier;
     if (!isValidUsername(username)) {
@@ -241,12 +212,7 @@ export const handleRegister = async (request: Request, env: Env): Promise<Respon
   // pre-computed digest cannot be stretched (there is no passphrase to
   // stretch), so such an account keeps the digest it was given.
   const passhash = suppliedHash || (await hashPassphraseForAccount(passphrase, env));
-  // The KOSync account key is the MD5 of the passphrase, salted so the stored
-  // value is not the credential itself. A pre-computed digest does not carry
-  // it, so the account keeps the native surface only.
-  const userkey = passphrase
-    ? await createKoSyncUserkey(await md5Hex(passphrase))
-    : NO_KOSYNC_USERKEY;
+  const userkey = UNUSED_USERKEY;
 
   try {
     await env.SYNC_DB.prepare(
@@ -571,10 +537,11 @@ export const handleLogin = async (request: Request, env: Env): Promise<Response>
 /**
  * Re-stretch the credentials of an account created before the change.
  *
- * Rows written by an older Worker hold an unsalted SHA-256 of the passphrase
- * and the bare MD5 of it. The first sign-in with the passphrase replaces them
- * with the stretched and salted values, so a deployment does not need a
- * migration: the accounts keep working and the table stops holding the weak
+ * Rows written by an older Worker hold an unsalted SHA-256 of the passphrase,
+ * and the KOSync-era `userkey` holds a digest of it (a bare or salted MD5).
+ * The first sign-in with the passphrase replaces the first with a stretched,
+ * salted value and clears the second, so a deployment does not need a
+ * migration: the accounts keep working and the table stops holding those
  * digests one account at a time.
  */
 const upgradeLegacyCredentials = async (
@@ -583,10 +550,10 @@ const upgradeLegacyCredentials = async (
   passphrase: string,
 ): Promise<void> => {
   const stretched = isLegacyPassphraseHash(row.passhash);
-  const salted = !isKoSyncUserkey(row.userkey) && /^[0-9a-f]{32}$/.test(row.userkey);
-  if (!stretched && !salted) return;
+  const hasDigest = row.userkey !== UNUSED_USERKEY;
+  if (!stretched && !hasDigest) return;
   const passhash = stretched ? await hashPassphraseForAccount(passphrase, env) : row.passhash;
-  const userkey = salted ? await createKoSyncUserkey(await md5Hex(passphrase)) : row.userkey;
+  const userkey = UNUSED_USERKEY;
   await env.SYNC_DB.prepare('UPDATE users SET passhash = ?, userkey = ? WHERE id = ?')
     .bind(passhash, userkey, row.id)
     .run();
@@ -703,6 +670,8 @@ export const handleDeleteAccount = async (env: Env, userId: string): Promise<Res
     db.prepare('DELETE FROM stat_pages WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM replicas WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM replica_keys WHERE user_id = ?').bind(userId),
+    // No longer written, but a deployment created before KOSync was removed may
+    // still hold rows for this account.
     db.prepare('DELETE FROM kosync_progress WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM login_attempts WHERE email = ?').bind(await emailOfUser(env, userId)),
     db.prepare('DELETE FROM users WHERE id = ?').bind(userId),

@@ -7,39 +7,12 @@ import { describe, it, expect } from 'vitest';
 import {
   base64urlDecode,
   base64urlEncode,
-  md5Hex,
   safeEqual,
   sha256Hex,
 } from '../../../workers/minerva-sync/src/crypto';
 import { extractBearerToken, mintToken, verifyToken } from '../../../workers/minerva-sync/src/auth';
 
 const SECRET = 'test-secret-value';
-
-describe('md5Hex', () => {
-  // RFC 1321 test vectors.
-  it('matches the RFC 1321 vectors', async () => {
-    await expect(md5Hex('')).resolves.toBe('d41d8cd98f00b204e9800998ecf8427e');
-    await expect(md5Hex('a')).resolves.toBe('0cc175b9c0f1b6a831c399e269772661');
-    await expect(md5Hex('abc')).resolves.toBe('900150983cd24fb0d6963f7d28e17f72');
-    await expect(md5Hex('message digest')).resolves.toBe('f96b697d7cb7938d525a2f31aaf161d0');
-    await expect(md5Hex('abcdefghijklmnopqrstuvwxyz')).resolves.toBe(
-      'c3fcd3d76192e4007dfb496cca67e13b',
-    );
-    await expect(
-      md5Hex('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'),
-    ).resolves.toBe('d174ab98d277d9f5a5611c2c9f419d9f');
-    await expect(
-      md5Hex('12345678901234567890123456789012345678901234567890123456789012345678901234567890'),
-    ).resolves.toBe('57edf4a22be3c955ac49da2e2107b67a');
-  });
-
-  it('hashes the passphrase the KOSync client would send', async () => {
-    // KOReader sends md5(password); the server compares this digest.
-    const digest = await md5Hex('passphrase');
-    expect(digest).toHaveLength(32);
-    expect(digest).toMatch(/^[0-9a-f]{32}$/);
-  });
-});
 
 describe('sha256Hex', () => {
   it('produces the well-known digest of the empty string', async () => {
