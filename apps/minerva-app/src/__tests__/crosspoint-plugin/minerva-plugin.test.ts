@@ -223,56 +223,19 @@ describe('Minerva CrossPoint plugin', () => {
     });
   });
 
-  it('points the reader’s KOReader Sync at Minerva with the key', async () => {
-    minerva();
-    await mount();
-    // KOReader Sync isn't set up on the reader, so progress sync is on by default.
-    expect(field('kosync').checked).toBe(true);
-    await signIn();
-    expect(settingsPosts).toEqual([
-      {
-        koServerUrl: API,
-        koUsername: EMAIL, // a label: the key alone authenticates
-        koPassword: 'device-key',
-        koMatchMethod: 1, // Binary: Minerva identifies books by partial MD5
-        koSyncBehavior: 1, // Smart
-        // Title and authors let Minerva place a copy CrossPoint rewrote on
-        // upload ("Optimize EPUB"), whose partial MD5 no longer matches.
-        koSendMetadata: 1,
-      },
-    ]);
-  });
-
-  it('asks before replacing a KOReader Sync server set up on the reader', async () => {
+  it('does not touch the reader’s KOReader Sync when signing in', async () => {
     minerva();
     deviceSettings = { koServerUrl: 'https://sync.koreader.rocks', koUsername: 'me' };
     await mount();
-    expect(field('kosync').checked).toBe(false);
-    expect(container.textContent).toContain('replaces https://sync.koreader.rocks');
-
     await signIn();
     expect(settingsPosts).toEqual([]);
     expect(files()[TOKEN_FILE]).toEqual({ access_token: 'device-key' });
   });
 
-  it('replaces that server when the user opts in', async () => {
-    minerva();
-    deviceSettings = { koServerUrl: 'https://sync.koreader.rocks', koUsername: 'me' };
-    await mount();
-    field('kosync').checked = true;
-    await signIn();
-    expect(settingsPosts).toEqual([expect.objectContaining({ koServerUrl: API })]);
-  });
-
-  it('turns Minerva progress sync off when signing in again with it unchecked', async () => {
+  it('turns off a progress sync an earlier version pointed at Minerva', async () => {
     minerva();
     deviceSettings = { koServerUrl: API, koUsername: EMAIL };
     await mount({ username: EMAIL, keyId: 'old-key-id' });
-    // Minerva is already the reader's sync server, so nothing is "replaced".
-    expect(field('kosync').checked).toBe(true);
-    expect(container.textContent).not.toContain('replaces');
-
-    field('kosync').checked = false;
     await signIn();
     expect(settingsPosts).toEqual([{ koServerUrl: '', koUsername: '', koPassword: '' }]);
   });
@@ -307,6 +270,8 @@ describe('Minerva CrossPoint plugin', () => {
 
   it('records a new key before handing it out, so a failed setup leaves it revocable', async () => {
     minerva();
+    // A reader an earlier version pointed at Minerva: signing in must clear that.
+    deviceSettings = { koServerUrl: API, koUsername: EMAIL };
     settingsPostStatus = 500;
     await mount({ username: EMAIL, keyId: 'old-key-id' });
     await signIn('Sign-in failed: could not update KOReader Sync settings (HTTP 500)');
@@ -402,16 +367,13 @@ describe('Minerva CrossPoint plugin', () => {
     expect(settingsPosts).toEqual([]);
   });
 
-  // The buttons follow the card's state: Sign in, with the progress sync choice
-  // it applies, while signed out; Sign out while signed in.
+  // The buttons follow the card's state: Sign in while signed out; Sign out
+  // while signed in.
   describe('buttons', () => {
-    const syncRow = () => container.querySelector('[data-kosync-row]');
-
-    it('offers Sign in and the progress sync choice while signed out', async () => {
+    it('offers Sign in while signed out', async () => {
       minerva();
       await mount();
       expect(shown(field('signin'))).toBe(true);
-      expect(shown(syncRow())).toBe(true);
       expect(shown(field('signout'))).toBe(false);
     });
 
@@ -419,7 +381,6 @@ describe('Minerva CrossPoint plugin', () => {
       minerva();
       await mount({ username: EMAIL, keyId: 'key-id' });
       expect(shown(field('signin'))).toBe(false);
-      expect(shown(syncRow())).toBe(false);
       expect(shown(field('signout'))).toBe(true);
     });
 

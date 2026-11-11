@@ -19,8 +19,6 @@ CrossPoint.registerPlugin(async (container, api) => {
     '<p data-status>Checking sign-in…</p>' +
     '<p data-code hidden>Open <a data-link target="_blank" rel="noopener"></a> ' +
     'and approve the code <b data-user-code></b>.</p>' +
-    '<div class="setting-row" data-kosync-row><span class="setting-name">Sync reading progress<span data-kosync-note></span></span>' +
-    '<span class="setting-control"><input type="checkbox" name="kosync" checked></span></div>' +
     '<div class="setting-row">' +
     '<button type="button" class="btn-small btn-add" name="signin">Sign in</button> ' +
     '<button type="button" class="btn-small" name="signout">Sign out</button>' +
@@ -39,11 +37,9 @@ CrossPoint.registerPlugin(async (container, api) => {
   const status = (text) => {
     $('[data-status]').textContent = text;
   };
-  // Offer what applies now: Sign in, with the progress sync choice it applies,
-  // while signed out; Sign out while signed in.
+  // Offer what applies now: Sign in while signed out; Sign out while signed in.
   const showSignedIn = (signedIn) => {
     $('[name="signin"]').style.display = signedIn ? 'none' : '';
-    $('[data-kosync-row]').style.display = signedIn ? 'none' : '';
     $('[name="signout"]').style.display = signedIn ? '' : 'none';
   };
   // btoa() alone throws on characters outside Latin-1.
@@ -135,18 +131,9 @@ CrossPoint.registerPlugin(async (container, api) => {
     await saveAccount({ revoke: [...replaced, key.id] });
     await writeJson(TOKEN_PATH, { access_token: key.access_token });
     const settings = await readSettings();
-    if ($('[name="kosync"]').checked) {
-      await postSettings({
-        koServerUrl: API,
-        koUsername: key.username, // a label: the key alone authenticates
-        koPassword: key.access_token,
-        koMatchMethod: 1, // Binary: Minerva identifies books by partial MD5
-        koSyncBehavior: 1, // Smart
-        // Title and authors let Minerva place a book CrossPoint rewrote on
-        // upload (Optimize EPUB), whose partial MD5 no longer matches.
-        koSendMetadata: 1,
-      });
-    } else if (syncsWithMinerva(settings)) {
+    // Minerva no longer serves reading progress: turn off the reader's sync if
+    // an earlier sign-in pointed it at Minerva.
+    if (syncsWithMinerva(settings)) {
       await postSettings(NO_SYNC);
     }
     await saveAccount({
@@ -301,14 +288,4 @@ CrossPoint.registerPlugin(async (container, api) => {
   }
   status(account.username ? `Signed in as ${account.username}.` : 'Not signed in.');
   showSignedIn(!!account.username);
-  try {
-    // Don't take over a KOReader Sync server the user set up without asking
-    // (an empty URL with a username means CrossPoint's own sync server).
-    const settings = await readSettings();
-    const server = settingValue(settings, 'koServerUrl');
-    if (settingValue(settings, 'koUsername') && server !== API) {
-      $('[name="kosync"]').checked = false;
-      $('[data-kosync-note]').textContent = ` (replaces ${server || 'the CrossPoint sync server'})`;
-    }
-  } catch {}
 });

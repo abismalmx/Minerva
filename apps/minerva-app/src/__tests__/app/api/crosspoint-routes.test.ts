@@ -58,9 +58,7 @@ import { POST as approvePOST } from '@/app/api/crosspoint/device/approve/route';
 import { GET as booksGET } from '@/app/api/crosspoint/books/route';
 import { GET as bookGET } from '@/app/api/crosspoint/books/[hash]/route';
 import { POST as sessionsPOST } from '@/app/api/crosspoint/sessions/route';
-import { GET as authGET } from '@/app/api/crosspoint/users/auth/route';
-import { GET as progressGET } from '@/app/api/crosspoint/syncs/progress/[document]/route';
-import { PUT as progressPUT } from '@/app/api/crosspoint/syncs/progress/route';
+import { authenticateDevice } from '@/libs/crosspoint';
 import { DELETE as keyDELETE } from '@/app/api/crosspoint/keys/[id]/route';
 
 const BASE = 'https://web.minerva.invalid/api/crosspoint';
@@ -72,18 +70,14 @@ const md5 = (s: string) => createHash('md5').update(s).digest('hex');
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const KEY_HASH = sha256(md5(KEY));
 const DOC = '32bb20d7452627491831bb64a8d0dd94';
-const XPOINTER = '/body/DocFragment[3]/body/p[12]/text().40';
 const boom = { message: 'boom' };
 
-// The catalog and events send the key as a Bearer token. KOSync clients send
-// x-auth-user/x-auth-key (md5 of the key); CrossPoint adds the same
-// credentials as HTTP Basic. The username is the account email.
-const deviceHeaders = (auth: 'bearer' | 'kosync' | 'basic' = 'bearer'): Record<string, string> =>
+// The catalog and events send the key as a Bearer token; CrossPoint can also
+// send it as the HTTP Basic password. The username is the account email.
+const deviceHeaders = (auth: 'bearer' | 'basic' = 'bearer'): Record<string, string> =>
   auth === 'bearer'
     ? { authorization: `Bearer ${KEY}` }
-    : auth === 'kosync'
-      ? { 'x-auth-user': EMAIL, 'x-auth-key': md5(KEY) }
-      : { authorization: `Basic ${btoa(`${EMAIL}:${KEY}`)}` };
+    : { authorization: `Basic ${btoa(`${EMAIL}:${KEY}`)}` };
 
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
   new Request(`${BASE}${path}`, {
@@ -276,14 +270,12 @@ describe('device sign-in', () => {
 
 describe('device key authentication', () => {
   const check = (headers: Record<string, string>) =>
-    authGET(new Request(`${BASE}/users/auth`, { headers }));
+    authenticateDevice(new Request(`${BASE}/books`, { headers }), makeClient() as never);
 
-  it('accepts the key as a Bearer token, a KOSync key, or the HTTP Basic password', async () => {
-    for (const auth of ['bearer', 'kosync', 'basic'] as const) {
+  it('accepts the key as a Bearer token or the HTTP Basic password', async () => {
+    for (const auth of ['bearer', 'basic'] as const) {
       calls = [];
-      const res = await check(deviceHeaders(auth));
-      expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ authorized: 'OK' });
+      expect(await check(deviceHeaders(auth))).toBe(USER);
       // The key alone authenticates: the username is a label that survives an email change.
       expect(calls).toEqual([
         ['crosspoint_devices', 'select', 'user_id'],
@@ -291,29 +283,33 @@ describe('device key authentication', () => {
         ['crosspoint_devices', 'limit', 1],
       ]);
     }
-    expect((await check({ 'x-auth-key': md5(KEY).toUpperCase() })).status).toBe(200);
   });
 
   it('rejects unknown keys and malformed credentials', async () => {
     results['crosspoint_devices.select'] = { data: [], error: null };
-    expect((await check(deviceHeaders())).status).toBe(401);
+    const unknown = await check(deviceHeaders());
+    expect(typeof unknown === 'string' ? 200 : unknown.status).toBe(401);
 
     const malformed: Record<string, string>[] = [
       {},
       { authorization: 'Token abc' },
       { authorization: 'Basic !!!' },
       { authorization: `Basic ${btoa('no-separator')}` },
+      // KOSync's own header is not a credential here any more.
+      { 'x-auth-user': EMAIL, 'x-auth-key': md5(KEY) },
     ];
     for (const headers of malformed) {
       calls = [];
-      expect((await check(headers)).status).toBe(401);
+      const res = await check(headers);
+      expect(typeof res === 'string' ? 200 : res.status).toBe(401);
       expect(calls).toEqual([]);
     }
   });
 
   it('reports a failed key lookup as a server error, not a wrong key', async () => {
     results['crosspoint_devices.select'] = { data: null, error: boom };
-    expect((await check(deviceHeaders())).status).toBe(500);
+    const res = await check(deviceHeaders());
+    expect(typeof res === 'string' ? 200 : res.status).toBe(500);
   });
 });
 
@@ -576,344 +572,5 @@ describe('reading sessions', () => {
     results['book_configs.select'] = { data: null, error: null };
     results['stat_pages.upsert'] = { data: null, error: boom };
     expect((await session({})).status).toBe(500);
-  });
-});
-
-describe('KOSync progress', () => {
-  const get = () =>
-    progressGET(
-      new Request(`${BASE}/syncs/progress/${DOC}`, { headers: deviceHeaders('kosync') }),
-      {
-        params: Promise.resolve({ document: DOC }),
-      },
-    );
-  const put = (body: Record<string, unknown> | string, auth: 'kosync' | 'basic' = 'kosync') =>
-    progressPUT(
-      new Request(`${BASE}/syncs/progress`, {
-        method: 'PUT',
-        headers: deviceHeaders(auth),
-        body:
-          typeof body === 'string'
-            ? body
-            : JSON.stringify({ document: DOC, progress: XPOINTER, percentage: 0.5, ...body }),
-      }),
-    );
-
-  it("returns the book's synced XPointer with its progress and time", async () => {
-    results['book_configs.select'] = {
-      data: { xpointer: XPOINTER, progress: '[30,120]', updated_at: '2026-10-01T00:00:00.000Z' },
-      error: null,
-    };
-    const res = await get();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      document: DOC,
-      progress: XPOINTER,
-      percentage: 0.25,
-      device: 'Minerva',
-      device_id: 'minerva',
-      timestamp: 1790812800,
-    });
-    expect(calls).toEqual(
-      expect.arrayContaining([
-        ['book_configs', 'eq', 'user_id', USER],
-        ['book_configs', 'eq', 'book_hash', DOC],
-        ['book_configs', 'is', 'deleted_at', null],
-      ]),
-    );
-  });
-
-  it('answers 404 without an XPointer, and 0% for an unusable page count', async () => {
-    results['book_configs.select'] = {
-      data: { xpointer: null, progress: '[30,120]' },
-      error: null,
-    };
-    expect((await get()).status).toBe(404);
-    results['book_configs.select'] = { data: null, error: null };
-    expect((await get()).status).toBe(404);
-
-    for (const progress of [null, 'not json', '[5,0]']) {
-      results['book_configs.select'] = {
-        data: { xpointer: XPOINTER, progress, updated_at: '2026-10-01T00:00:00.000Z' },
-        error: null,
-      };
-      expect(await (await get()).json()).toMatchObject({ progress: XPOINTER, percentage: 0 });
-    }
-  });
-
-  it("updates the book's config and library progress, never over a newer write", async () => {
-    results['book_configs.select'] = {
-      data: { xpointer: '/body/DocFragment[1]', progress: '[30,120]' },
-      error: null,
-    };
-    const res = await put({ device: 'CrossPoint' }, 'basic');
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ document: DOC, timestamp: 1790899200 });
-
-    // The percentage is scaled onto the book's Minerva page count.
-    expect(calls).toEqual(
-      expect.arrayContaining([
-        ['book_configs', 'update', { xpointer: XPOINTER, progress: '[60,120]', updated_at: NOW }],
-        ['book_configs', 'lt', 'updated_at', NOW],
-        ['books', 'update', { progress: [60, 120], updated_at: NOW }],
-        ['books', 'eq', 'user_id', USER],
-        ['books', 'eq', 'book_hash', DOC],
-        ['books', 'lt', 'updated_at', NOW],
-      ]),
-    );
-  });
-
-  it('keeps the percentage, in whole percents, for a book Minerva has not paginated', async () => {
-    await put({ percentage: 0.427 });
-    expect(calls).toEqual(
-      expect.arrayContaining([
-        [
-          'book_configs',
-          'upsert',
-          {
-            user_id: USER,
-            book_hash: DOC,
-            xpointer: XPOINTER,
-            progress: '[43,100]',
-            updated_at: NOW,
-          },
-          // A config written meanwhile is newer: keep it.
-          { onConflict: 'user_id,book_hash', ignoreDuplicates: true },
-        ],
-        ['books', 'update', { progress: [43, 100], updated_at: NOW }],
-      ]),
-    );
-  });
-
-  it("doesn't pull Minerva's position back for a reader that has not seen it", async () => {
-    // Minerva is halfway through but stored no XPointer, so the reader's sync
-    // found nothing and uploads its own position from a fresh download.
-    results['book_configs.select'] = {
-      data: { xpointer: null, progress: '[60,120]' },
-      error: null,
-    };
-    expect((await put({ percentage: 0.01 })).status).toBe(200);
-    expect(wrote('book_configs')).toBe(false);
-    expect(wrote('books')).toBe(false);
-
-    // Once it has seen an XPointer, an upload is the user's choice.
-    results['book_configs.select'] = {
-      data: { xpointer: XPOINTER, progress: '[60,120]' },
-      error: null,
-    };
-    await put({ percentage: 0.01 });
-    expect(wrote('book_configs')).toBe(true);
-  });
-
-  it('rejects malformed pushes and unknown keys without writing', async () => {
-    for (const body of [
-      'not json',
-      { document: 'not-a-hash' },
-      { percentage: 1.5 },
-      { percentage: undefined },
-      { progress: '42' },
-      { progress: `/body/${'p'.repeat(4096)}` },
-    ]) {
-      calls = [];
-      expect((await put(body)).status).toBe(400);
-      expect(calls.some(([table]) => table !== 'crosspoint_devices')).toBe(false);
-    }
-
-    calls = [];
-    results['crosspoint_devices.select'] = { data: [], error: null };
-    expect((await put({})).status).toBe(401);
-    expect(calls.some(([table]) => table !== 'crosspoint_devices')).toBe(false);
-  });
-
-  // CrossPoint's "Optimize EPUB" upload rewrites a book, so the reader asks
-  // about a document id (the file's partial MD5) that no Minerva book has.
-  describe('a rewritten copy of a Minerva book', () => {
-    const BOOK = '0123456789abcdef0123456789abcdef';
-    const TITLE = 'Alice, Illustrated (1865)';
-    // The reader joins every dc:creator with ", ".
-    const metadata = {
-      filename: 'Alice.epub',
-      title: TITLE,
-      authors: 'Lewis Carroll, John Tenniel',
-    };
-    // Renamed in Minerva; source_title keeps the file's own title.
-    const libraryBook = {
-      book_hash: BOOK,
-      title: 'Alice',
-      source_title: TITLE,
-      author: 'Lewis Carroll and John Tenniel',
-    };
-    const linkWrite = [
-      'crosspoint_documents',
-      'upsert',
-      { user_id: USER, document: DOC, book_hash: BOOK },
-      { onConflict: 'user_id,document', ignoreDuplicates: true },
-    ];
-
-    it('links it to the library book with its title on the first upload', async () => {
-      results['books.select'] = { data: [libraryBook], error: null };
-      results['book_configs.select'] = {
-        data: { xpointer: XPOINTER, progress: '[30,120]' },
-        error: null,
-      };
-      const res = await put({ metadata });
-      expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ document: DOC, timestamp: 1790899200 });
-      expect(calls).toEqual(
-        expect.arrayContaining([
-          // Minerva's own copy of the file, or EPUBs titled alike. Characters
-          // that are or() syntax become single-character wildcards.
-          [
-            'books',
-            'or',
-            `book_hash.eq.${DOC},source_title.ilike.Alice_ Illustrated _1865_,title.ilike.Alice_ Illustrated _1865_`,
-          ],
-          ['books', 'eq', 'format', 'EPUB'],
-          ['books', 'is', 'deleted_at', null],
-          linkWrite,
-          ['book_configs', 'eq', 'book_hash', BOOK],
-          ['book_configs', 'update', { xpointer: XPOINTER, progress: '[60,120]', updated_at: NOW }],
-          ['books', 'update', { progress: [60, 120], updated_at: NOW }],
-          ['books', 'eq', 'book_hash', BOOK],
-        ]),
-      );
-      // Every book with that title is compared: a cut-off list could drop
-      // Minerva's own file or a second book that fits.
-      expect(calls.some(([table, method]) => table === 'books' && method === 'limit')).toBe(false);
-    });
-
-    it("doesn't pull Minerva's position back when it links", async () => {
-      // The reader asked under the new id and found nothing, so it uploads
-      // its own position.
-      results['books.select'] = { data: [libraryBook], error: null };
-      results['book_configs.select'] = {
-        data: { xpointer: XPOINTER, progress: '[60,120]' },
-        error: null,
-      };
-      expect((await put({ metadata, percentage: 0.01 })).status).toBe(200);
-      expect(calls).toContainEqual(linkWrite);
-      expect(wrote('book_configs')).toBe(false);
-      expect(wrote('books')).toBe(false);
-    });
-
-    it('syncs a linked copy as the library book', async () => {
-      results['crosspoint_documents.select'] = { data: { book_hash: BOOK }, error: null };
-      results['book_configs.select'] = {
-        data: { xpointer: XPOINTER, progress: '[30,120]', updated_at: '2026-10-01T00:00:00.000Z' },
-        error: null,
-      };
-      const res = await get();
-      expect(await res.json()).toMatchObject({ document: DOC, progress: XPOINTER });
-      expect(calls).toEqual(
-        expect.arrayContaining([
-          ['crosspoint_documents', 'eq', 'user_id', USER],
-          ['crosspoint_documents', 'eq', 'document', DOC],
-          ['book_configs', 'eq', 'book_hash', BOOK],
-        ]),
-      );
-
-      calls = [];
-      await put({ metadata });
-      expect(calls).toContainEqual(['book_configs', 'eq', 'book_hash', BOOK]);
-      expect(calls.some(([table, method]) => table === 'books' && method === 'or')).toBe(false);
-    });
-
-    it('picks the book by its first author when titles collide', async () => {
-      results['books.select'] = {
-        data: [{ ...libraryBook, book_hash: 'f'.repeat(32), author: 'Someone Else' }, libraryBook],
-        error: null,
-      };
-      await put({ metadata });
-      expect(calls).toContainEqual(linkWrite);
-    });
-
-    // Never acknowledged under the copy's own id: the reader retries.
-    it('reports database failures while linking', async () => {
-      results['crosspoint_documents.select'] = { data: null, error: boom };
-      expect((await get()).status).toBe(500);
-      expect((await put({ metadata })).status).toBe(500);
-
-      results['crosspoint_documents.select'] = { data: null, error: null };
-      results['books.select'] = { data: null, error: boom };
-      expect((await put({ metadata })).status).toBe(500);
-
-      results['books.select'] = { data: [libraryBook], error: null };
-      results['crosspoint_documents.upsert'] = { data: null, error: boom };
-      expect((await put({ metadata })).status).toBe(500);
-
-      expect(wrote('book_configs')).toBe(false);
-      expect(wrote('books')).toBe(false);
-    });
-
-    // Libraries often hold the same book twice (an older import, another
-    // edition): the copy goes to the one being read.
-    it('picks the most recently read book when title and author tie', async () => {
-      results['books.select'] = {
-        data: [
-          { ...libraryBook, book_hash: 'f'.repeat(32), updated_at: '2026-02-10T00:00:00.000Z' },
-          { ...libraryBook, updated_at: '2026-10-03T00:00:00.000Z' },
-          { ...libraryBook, book_hash: 'e'.repeat(32), updated_at: '2026-05-01T00:00:00.000Z' },
-        ],
-        error: null,
-      };
-      await put({ metadata });
-      expect(calls).toContainEqual(linkWrite);
-    });
-
-    it('matches the first author whole, not as part of a longer name', async () => {
-      results['books.select'] = {
-        data: [
-          { ...libraryBook, updated_at: '2026-02-10T00:00:00.000Z' },
-          {
-            ...libraryBook,
-            book_hash: 'f'.repeat(32),
-            author: 'Lewis Carrollton',
-            updated_at: '2026-10-03T00:00:00.000Z',
-          },
-        ],
-        error: null,
-      };
-      await put({ metadata });
-      expect(calls).toContainEqual(linkWrite);
-    });
-
-    it('keeps a copy it cannot place under its own id', async () => {
-      const cases: [string, Record<string, unknown>, unknown[]][] = [
-        ['without metadata', {}, [libraryBook]],
-        ['with no book of that title', { metadata }, [{ ...libraryBook, source_title: 'Other' }]],
-        [
-          'when titles collide and no author was sent',
-          { metadata: { title: TITLE } },
-          [libraryBook, { ...libraryBook, book_hash: 'f'.repeat(32), author: 'Someone Else' }],
-        ],
-        // The file is Minerva's own: nothing to link.
-        ['for Minerva’s own file', { metadata }, [libraryBook, { ...libraryBook, book_hash: DOC }]],
-      ];
-      for (const [, body, books] of cases) {
-        calls = [];
-        results['books.select'] = { data: books, error: null };
-        expect((await put(body)).status).toBe(200);
-        expect(wrote('crosspoint_documents')).toBe(false);
-        expect(calls).toContainEqual(['book_configs', 'eq', 'book_hash', DOC]);
-        expect(calls).not.toContainEqual(['book_configs', 'eq', 'book_hash', BOOK]);
-      }
-    });
-  });
-
-  it('reports database failures, but a failed library row update never fails a push', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    results['books.update'] = { data: null, error: boom };
-    expect((await put({})).status).toBe(200);
-    expect(warn).toHaveBeenCalled();
-
-    calls = [];
-    results['book_configs.upsert'] = { data: null, error: boom };
-    expect((await put({})).status).toBe(500);
-    expect(wrote('books')).toBe(false);
-
-    results['book_configs.select'] = { data: null, error: boom };
-    expect((await put({})).status).toBe(500);
-    expect((await get()).status).toBe(500);
-    warn.mockRestore();
   });
 });
