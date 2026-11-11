@@ -78,7 +78,7 @@ Project-related agent context lives under `.agents/`, which is a symlink to `.cl
 
 ## Project Rules
 
-Rules are in `.agents/rules/`: test-first, typescript, verification, acceptance.
+Rules are in `.agents/rules/`: test-first, typescript, verification, acceptance, commits.
 
 ### Implementation Scope
 
