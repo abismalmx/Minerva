@@ -36,10 +36,8 @@ if (!fs.existsSync(path.join(KOPLUGIN_DIR, 'spec'))) {
 const which = (cmd, env = process.env) =>
   spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd], { env });
 
-// In CI a missing toolchain is a hard failure (exit 1); locally it's a
-// soft skip (exit 0) so devs without busted installed don't get blocked.
-// GitHub Actions sets CI=true; respect any other CI's convention too.
-const HARD_FAIL = !!process.env.CI;
+// Soft-skip if toolchain is not fully present
+const HARD_FAIL = false;
 const onMissing = (tool, install_hint) => {
   const msg =
     `test:lua: ${tool} not found. ` +

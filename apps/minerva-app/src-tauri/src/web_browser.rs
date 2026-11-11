@@ -345,7 +345,11 @@ pub fn companion_rect(
     scale_factor: f64,
     preferred_width: f64,
 ) -> CompanionRect {
-    let scale = if scale_factor > 0.0 { scale_factor } else { 1.0 };
+    let scale = if scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
     let logical = |value: f64| value / scale;
 
     let reader_x = logical(reader.0 as f64);
@@ -1124,10 +1128,16 @@ mod tests {
     fn companion_window_title_names_the_host_it_shows() {
         let base = "Gemini Companion";
         let gemini = Url::parse("https://gemini.google.com/app?q=hola").unwrap();
-        assert_eq!(companion_window_title(base, &gemini), "Gemini Companion · gemini.google.com");
+        assert_eq!(
+            companion_window_title(base, &gemini),
+            "Gemini Companion · gemini.google.com"
+        );
 
         let elsewhere = Url::parse("https://example.invalid/login").unwrap();
-        assert_eq!(companion_window_title(base, &elsewhere), "Gemini Companion · example.invalid");
+        assert_eq!(
+            companion_window_title(base, &elsewhere),
+            "Gemini Companion · example.invalid"
+        );
 
         // A URL without a host (a `data:` document) keeps the plain name.
         let data = Url::parse("data:text/html,<p>hola</p>").unwrap();
@@ -1185,8 +1195,14 @@ mod tests {
     fn companion_rect_never_leaves_the_work_area() {
         // Reader hanging off the left edge of the work area.
         let rect = companion_rect((-200, -50, 1000, 900), (0, 0, 1280, 800), 1.0, 460.0);
-        assert!(rect.x >= 8.0, "the panel stays inside the work area: {rect:?}");
-        assert!(rect.y >= 8.0, "the panel stays inside the work area: {rect:?}");
+        assert!(
+            rect.x >= 8.0,
+            "the panel stays inside the work area: {rect:?}"
+        );
+        assert!(
+            rect.y >= 8.0,
+            "the panel stays inside the work area: {rect:?}"
+        );
         assert!(
             rect.x + rect.width <= 1280.0 - 8.0,
             "the panel stays inside the work area: {rect:?}"
