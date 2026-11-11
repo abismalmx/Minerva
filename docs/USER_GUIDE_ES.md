@@ -63,8 +63,7 @@ base D1 y un bucket R2) con un único comando:
 ```
 
 El script crea lo que falta, genera el secreto, aplica las migraciones, publica
-el Worker y deja la app configurada. También habla el protocolo **KOSync**, así
-que **KOReader** puede usar el mismo servidor.
+el Worker y deja la app configurada.
 
 **2 · Privacidad por construcción, no por política.** Los campos sensibles que
 se sincronizan se cifran **antes de salir del dispositivo**, con una clave
@@ -1106,7 +1105,7 @@ ayuda, que se abre con `Shift + ?`. **Todos son remapeables.**
 | **Búsqueda contextual de imágenes** | Desde la selección, busca en Wikipedia y Wikimedia Commons, con idioma según el libro, resumen biográfico opcional e inserción como Markdown en la nota | `src/services/imageSearch/`, `annotator/ImageSearchDialog.tsx` |
 | **Póster de *Continuar lectura*** | Un póster a tamaño completo con el libro en curso, su porcentaje impreso como cifra protagonista y el tiempo restante estimado | `src/app/library/components/ContinueReadingHero.tsx` |
 | **La identidad visual *Minerva*** | Bronce y oro sobre neutros cálidos, tipografía display serif, el «lomo» como señal propia, semitono, y modo e-ink sin sombras | `src/styles/themes.ts`, `globals.css`, `IDENTITY.md` |
-| **Backend autoalojable** | Un Worker + D1 + R2 de tu cuenta, con un comando de despliegue, cifrado en cliente y compatibilidad KOSync | `workers/minerva-sync/`, `deploy-cloudflare.sh` |
+| **Backend autoalojable** | Un Worker + D1 + R2 de tu cuenta, con un comando de despliegue, y cifrado en cliente | `workers/minerva-sync/`, `deploy-cloudflare.sh` |
 | **Empaquetado multiplataforma propio** | Linux con runtime **CEF**, Windows con **WebView2** y el DLL de miniaturas compilado aparte, Android con **NDK 28.2** y APK arm64 | `docs/BUILD_WINDOWS_MACOS.md` |
 | **Español completo** | Todo el catálogo de la interfaz, incluidas las funciones nuevas | `public/locales/es/` |
 
@@ -1120,7 +1119,7 @@ ayuda, que se abre con `Shift + ?`. **Todos son remapeables.**
 | **Pagos** | En un despliegue propio (`SELF_HOSTED=true`) **todas** las funciones quedan disponibles: no hay tienda |
 | **Marca** | Minerva en todas partes: nombre, icono, paleta, tipografía, textos de la interfaz y del instalador |
 | **Dependencias** | Se retiraron las credenciales del servicio alojado que venían embebidas; el `.env.example` pasó de más de cien variables a nueve |
-| **Datos sensibles** | Cifrados en el cliente con PBKDF2 (600 000 iteraciones) en la superficie propia; MD5 en la compatibilidad KOSync |
+| **Datos sensibles** | Cifrados en el cliente con PBKDF2 (600 000 iteraciones) |
 | **Empaquetado de Linux** | Runtime CEF en lugar de Electron: un solo binario autocontenido, sin instalar Chromium aparte |
 
 ### 8.3 Lo que Minerva elimina
@@ -1243,7 +1242,7 @@ tu passphrase.
 
 **¿Qué otros proveedores de sincronización hay?**
 WebDAV, Google Drive, S3, OneDrive e iCloud para la **sincronización de
-ficheros**; KOSync, BookOrbit, Readwise, Hardcover, Pagebound y Notion para
+ficheros**; BookOrbit, Readwise, Hardcover, Pagebound y Notion para
 progreso y notas.
 
 ### 9.3 El Cuaderno

@@ -77,7 +77,6 @@
           <li>Rich Notebook Editor: Full Markdown editing with chapter-level organization and citation tools.</li>
           <li>Enhanced Library UI: Continue reading hero section, redesigned book spine layouts, and refreshed navigation.</li>
           <li>Image Search &amp; Visual Notes: Integrated image finder for context and visual annotation.</li>
-          <li>KOSync Compatibility: Native server synchronization compatible with KOReader devices.</li>
           <li>Cross-Platform: Standalone Linux AppImage and Android APK build v1.0.5.</li>
         </ul>
       </description>

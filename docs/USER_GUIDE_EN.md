@@ -64,8 +64,7 @@ database and an R2 bucket) with a single command:
 ```
 
 The script creates whatever is missing, generates the secret, applies the
-migrations, publishes the Worker and leaves the app configured. It also speaks
-the **KOSync** protocol, so **KOReader** can use the same server.
+migrations, publishes the Worker and leaves the app configured.
 
 **2 · Privacy by construction, not by policy.** The sensitive fields you sync
 are encrypted **before they leave the device**, with a key derived from your
@@ -1084,7 +1083,7 @@ dialog, which opens with `Shift + ?`. **Every one of them is remappable.**
 | **Contextual image search** | From your selection, searches Wikipedia and Wikimedia Commons, with the language taken from the book, an optional biographical extract and Markdown insertion into the note | `src/services/imageSearch/`, `annotator/ImageSearchDialog.tsx` |
 | **The *Continue reading* poster** | A full-size poster with the book in progress, its percentage printed as the protagonist figure and an estimated time remaining | `src/app/library/components/ContinueReadingHero.tsx` |
 | **The *Minerva* visual identity** | Bronze and gold on warm neutrals, a serif display face, the "spine" as its own signal, halftone texture, and a shadow-free e-ink mode | `src/styles/themes.ts`, `globals.css`, `IDENTITY.md` |
-| **Self-hostable backend** | One Worker + D1 + R2 on your own account, a one-command deployment, client-side encryption and KOSync compatibility | `workers/minerva-sync/`, `deploy-cloudflare.sh` |
+| **Self-hostable backend** | One Worker + D1 + R2 on your own account, a one-command deployment, and client-side encryption | `workers/minerva-sync/`, `deploy-cloudflare.sh` |
 | **Its own multiplatform packaging** | Linux with the **CEF** runtime, Windows with **WebView2** and the thumbnail DLL compiled separately, Android with **NDK 28.2** and an arm64 APK | `docs/BUILD_WINDOWS_MACOS.md` |
 | **Complete Spanish** | The whole interface catalogue, including the new features | `public/locales/es/` |
 
@@ -1098,7 +1097,7 @@ dialog, which opens with `Shift + ?`. **Every one of them is remappable.**
 | **Payments** | On a self-hosted deployment (`SELF_HOSTED=true`) **every** feature is unlocked: there is no store |
 | **Branding** | Minerva everywhere: name, icon, palette, typography, interface text and installer |
 | **Dependencies** | The embedded credentials of the hosted service were removed; `.env.example` went from over a hundred variables to nine |
-| **Sensitive data** | Encrypted in the client with PBKDF2 (600 000 iterations) on the native surface; MD5 on the KOSync-compatible surface |
+| **Sensitive data** | Encrypted in the client with PBKDF2 (600 000 iterations) |
 | **Linux packaging** | CEF runtime instead of Electron: one self-contained binary, no separate Chromium install |
 
 ### 8.3 What Minerva removes
@@ -1220,7 +1219,7 @@ Yes. **Settings → Integrations → KOReader**, with the Worker's URL, your ema
 address and your passphrase.
 
 **Which other sync providers are there?**
-WebDAV, Google Drive, S3, OneDrive and iCloud for **file** sync; KOSync,
+WebDAV, Google Drive, S3, OneDrive and iCloud for **file** sync;
 BookOrbit, Readwise, Hardcover, Pagebound and Notion for progress and notes.
 
 ### 9.3 The Notebook

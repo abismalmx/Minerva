@@ -21,7 +21,6 @@
 [![Telemetry](https://img.shields.io/badge/telemetry-none-ff6d00)](#privacy-absolutely-zero-telemetry)
 [![Tauri](https://img.shields.io/badge/Tauri-2-orange)](https://v2.tauri.app)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1%20%2B%20R2-f38020)](https://workers.cloudflare.com)
-[![KOSync](https://img.shields.io/badge/KOSync-compatible-4a90d9)](https://koreader.rocks/)
 
 </div>
 
@@ -78,7 +77,7 @@ The app reads and writes against **your** server: no intermediary account, no th
 | --- | --- |
 | **Formats** | EPUB, PDF, MOBI, KF8 (AZW3), FB2, CBZ/CBR, TXT, HTML, MD — 12+ in total |
 | **Platforms** | macOS, Windows, Linux, Android, iOS, Web (PWA) |
-| **Sync** | Cloudflare Workers + D1 + R2, fully self-hostable, KOSync-compatible |
+| **Sync** | Cloudflare Workers + D1 + R2, fully self-hostable |
 | **Local database** | SQLite (Turso) with full-text search |
 | **License** | AGPL-3.0 |
 
@@ -130,7 +129,7 @@ Your **account passphrase** is never stored either. The Worker keeps only a stre
 - Your books live on **your disk**, in **your bucket**, or in **your** WebDAV / Google Drive / S3 / OneDrive / iCloud.
 - **No account is required.** The whole app works signed out.
 - **No purchase, no payment cloud.** A self-hosted deployment has no store, so every feature is unlocked.
-- The app also speaks the **KOSync** protocol, so **KOReader** can use the same server for its own progress sync.
+- **KOReader** syncs with the same server through the Minerva plugin (`apps/minerva.koplugin`).
 
 ---
 

@@ -308,7 +308,7 @@ These are the long-standing server endpoints around sync, storage, and email:
 
 ```
 sync.ts                  -> KOReader-compatible sync client (`KOSyncClient`)
-kosync.ts                -> KOSync legacy bridge
+kosync.ts                -> progress-protocol proxy (used by BookOrbit)
 sync/replicas.ts         -> replica sync upload/download (encrypted blobs)
 sync/replica-keys.ts     -> replica key bootstrap
 storage/upload.ts        -> presigned upload to S3/R2 for book bytes
@@ -379,10 +379,10 @@ and (sometimes) the native shell.
 
 Three sync paths coexist:
 
-The first is **legacy KOReader-compatible sync** for reading progress,
-implemented by `src/services/sync/KOSyncClient.ts` against `pages/api/sync.ts`
-and `pages/api/kosync.ts`. It exists for compatibility with KOSync-style
-clients.
+The first is **reading-progress sync with BookOrbit**, implemented by
+`src/services/sync/KOSyncClient.ts` (the KOReader-style progress protocol
+BookOrbit speaks) against `pages/api/kosync.ts`. The Worker no longer serves
+that protocol.
 
 The second is **replica sync**, the modern path. It encrypts each replica
 locally with a passphrase-derived key
