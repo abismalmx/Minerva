@@ -188,8 +188,21 @@ it.each([
   const menu = container.querySelector('.view-menu') as HTMLElement;
   const toggle = screen.getByRole('button', { name: 'View Options' });
   const endGap = width - menu.getBoundingClientRect().right;
-  expect(endGap).toBeGreaterThanOrEqual(16);
-  expect(endGap).toBeLessThanOrEqual(20);
+  const rect = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    return { l: r.left, r: r.right, w: r.width };
+  };
+  const detail = JSON.stringify({
+    width,
+    mobile,
+    menu: rect(menu),
+    toggle: rect(toggle),
+    menuMarginRight: getComputedStyle(menu).marginRight,
+    menuMaxWidth: getComputedStyle(menu).maxWidth,
+    header: container.firstElementChild ? rect(container.firstElementChild) : null,
+  });
+  expect(endGap, detail).toBeGreaterThanOrEqual(16);
+  expect(endGap, detail).toBeLessThanOrEqual(20);
   expect(menu.getBoundingClientRect().top).toBeCloseTo(toggle.getBoundingClientRect().bottom + 6);
   const overlay = container.querySelector('.overlay') as HTMLElement;
   expect(getComputedStyle(overlay).position).toBe('fixed');

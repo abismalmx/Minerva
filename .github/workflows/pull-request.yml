@@ -259,6 +259,7 @@ jobs:
             apps/minerva-app/.vitest-attachments/
             apps/minerva-app/src/__tests__/**/__screenshots__/
             apps/minerva-app/src/__tests__/**/__diffs__/
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 7
 
