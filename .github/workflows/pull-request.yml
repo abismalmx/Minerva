@@ -118,20 +118,23 @@ jobs:
       - name: install playwright browsers
         working-directory: apps/minerva-app
         run: |
-          # The runner's default apt mirror (azure.archive.ubuntu.com) sometimes fails
-          # to resolve, which failed the whole job. Use the main Ubuntu archive and
-          # retry the install a few times before giving up.
-          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-          for attempt in 1 2 3; do
+          # The runner's apt sources go through a mirror list whose first entry
+          # (azure.archive.ubuntu.com) sometimes fails to resolve, which failed the whole
+          # job. Point apt at the main Ubuntu archive. If the system libraries still
+          # cannot be installed, install only the browser: the runner image already
+          # ships most of what Chromium needs, and a real gap shows up in the tests.
+          sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+          for attempt in 1 2; do
             if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
-              npx playwright install-deps chromium
+              npx playwright install-deps chromium && exit 0
             else
-              npx playwright install --with-deps chromium
-            fi && exit 0
-            echo "::warning::playwright install failed (attempt $attempt), retrying"
-            sleep 20
+              npx playwright install --with-deps chromium && exit 0
+            fi
+            echo "::warning::playwright system dependencies failed (attempt $attempt)"
+            sleep 10
           done
-          exit 1
+          echo "::warning::installing the Playwright browser without system dependencies"
+          npx playwright install chromium
 
       - name: run web e2e tests
         id: web_e2e
@@ -188,20 +191,23 @@ jobs:
         if: matrix.shard == 1
         working-directory: apps/minerva-app
         run: |
-          # The runner's default apt mirror (azure.archive.ubuntu.com) sometimes fails
-          # to resolve, which failed the whole job. Use the main Ubuntu archive and
-          # retry the install a few times before giving up.
-          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-          for attempt in 1 2 3; do
+          # The runner's apt sources go through a mirror list whose first entry
+          # (azure.archive.ubuntu.com) sometimes fails to resolve, which failed the whole
+          # job. Point apt at the main Ubuntu archive. If the system libraries still
+          # cannot be installed, install only the browser: the runner image already
+          # ships most of what Chromium needs, and a real gap shows up in the tests.
+          sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+          for attempt in 1 2; do
             if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
-              npx playwright install-deps chromium
+              npx playwright install-deps chromium && exit 0
             else
-              npx playwright install --with-deps chromium
-            fi && exit 0
-            echo "::warning::playwright install failed (attempt $attempt), retrying"
-            sleep 20
+              npx playwright install --with-deps chromium && exit 0
+            fi
+            echo "::warning::playwright system dependencies failed (attempt $attempt)"
+            sleep 10
           done
-          exit 1
+          echo "::warning::installing the Playwright browser without system dependencies"
+          npx playwright install chromium
 
       - name: run web unit tests (shard ${{ matrix.shard }}/2)
         working-directory: apps/minerva-app
