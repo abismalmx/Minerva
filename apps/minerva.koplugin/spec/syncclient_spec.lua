@@ -338,7 +338,7 @@ describe("MinervaSyncClient without Turbo", function()
             if name ~= "." and name ~= ".." then left[#left + 1] = name end
         end
         table.sort(left)
-        assert.same({"other.json", "minerva_sync_100_1.json"}, left)
+        assert.same({"minerva_sync_100_1.json", "other.json"}, left)
         os.remove(dir .. "/other.json")
         os.remove(dir .. "/minerva_sync_100_1.json")
         lfs.rmdir(dir)

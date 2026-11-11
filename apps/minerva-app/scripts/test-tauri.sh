@@ -33,6 +33,12 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+# Only the .example is tracked; without .env.tauri the tests run with
+# NEXT_PUBLIC_APP_PLATFORM unset and every Tauri-gated code path is skipped.
+if [[ ! -f .env.tauri ]]; then
+  cp .env.tauri.example .env.tauri
+fi
+
 echo "Starting Next.js dev server..."
 dotenv -e .env.tauri -- next dev &
 DEV_PID=$!
