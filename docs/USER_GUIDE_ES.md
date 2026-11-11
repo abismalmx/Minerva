@@ -1407,7 +1407,6 @@ almacena la sal y el texto cifrado.
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Runbook del backend: migraciones, verificación, copias de seguridad, rollback |
 | [`SECURITY.md`](../SECURITY.md) | Modelo de amenazas, superficies de ataque y mitigaciones |
 | [`NOTICE`](../NOTICE) | Autoría original y atribuciones |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Cómo contribuir |
 
 ---
 

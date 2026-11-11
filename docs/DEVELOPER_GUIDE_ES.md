@@ -2219,7 +2219,7 @@ nix build -L
 
 ### 8.1 Antes de escribir código
 
-1. **Lee [`CONTRIBUTING.md`](../CONTRIBUTING.md)**, [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) y [`SECURITY.md`](../SECURITY.md).
+1. **Lee [`SECURITY.md`](../SECURITY.md).**
 2. **Abre una issue** si el cambio es una opinión sobre el producto o una funcionalidad nueva. La política del proyecto es explícita: *«If you want to make code changes based on your personal opinion(s), make sure you open an issue first describing the changes you want to make, and open a pull request only when your suggestions get approved by maintainers.»*
 3. **Busca en el rastreador de issues** si ya hay una propuesta o un fix conocido.
 4. **Lee [`apps/minerva-app/docs/contributors.md`](../apps/minerva-app/docs/contributors.md)** antes de revisar un PR de la comunidad: qué detiene una revisión por posible daño, qué se cierra sin revisar y quién está bloqueado o vigilado.
@@ -2452,8 +2452,6 @@ find apps/minerva-app/out/_next/static -name '*.js.map' | wc -l   # → 0
 | Documento | Contenido |
 | --- | --- |
 | [`README.md`](../README.md) | Punto de entrada: qué es Minerva, despliegue en un comando, estructura |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Guía de contribución oficial |
-| [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Código de conducta |
 | [`SECURITY.md`](../SECURITY.md) | Política de seguridad, modelo de amenazas y superficies de ataque |
 | [`NOTICE`](../NOTICE) | Avisos de copyright del upstream y del fork |
 | [`LICENSE`](../LICENSE) | AGPL v3 completa |

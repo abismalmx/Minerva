@@ -363,9 +363,8 @@ minerva/
 
 Pull requests are welcome. Before sending one:
 
-1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
-2. Open an issue if the change is an opinion about the product.
-3. Validate before pushing: `pnpm lint`, `pnpm test --run` and, if you touch Rust, `pnpm fmt:check` and `pnpm clippy:check`.
+1. Open an issue if the change is an opinion about the product.
+2. Validate before pushing: `pnpm lint`, `pnpm test --run` and, if you touch Rust, `pnpm fmt:check` and `pnpm clippy:check`.
 
 The architecture guide lives in [`apps/minerva-app/docs/architecture.md`](./apps/minerva-app/docs/architecture.md), and the full technical reference in the [Developer Guide](./docs/DEVELOPER_GUIDE_EN.md).
 

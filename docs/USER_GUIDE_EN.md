@@ -1381,7 +1381,6 @@ stores only the salt and the ciphertext.
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Backend runbook: migrations, verification, backups, rollback |
 | [`SECURITY.md`](../SECURITY.md) | Threat model, attack surfaces and mitigations |
 | [`NOTICE`](../NOTICE) | Original authorship and attributions |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | How to contribute |
 
 ---
 

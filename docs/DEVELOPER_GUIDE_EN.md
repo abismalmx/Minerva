@@ -2222,7 +2222,7 @@ nix build -L
 
 ### 8.1 Before writing code
 
-1. **Read [`CONTRIBUTING.md`](../CONTRIBUTING.md)**, [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md), and [`SECURITY.md`](../SECURITY.md).
+1. **Read [`SECURITY.md`](../SECURITY.md).**
 2. **Open an issue** if the change is an opinion about the product or a new feature. The project policy is explicit: *"If you want to make code changes based on your personal opinion(s), make sure you open an issue first describing the changes you want to make, and open a pull request only when your suggestions get approved by maintainers."*
 3. **Search the issue tracker** for an existing proposal or known fix.
 4. **Read [`apps/minerva-app/docs/contributors.md`](../apps/minerva-app/docs/contributors.md)** before reviewing a community PR: what stops a review for possible harm, what gets closed unreviewed, and who is blocked or watched.
@@ -2455,8 +2455,6 @@ find apps/minerva-app/out/_next/static -name '*.js.map' | wc -l   # → 0
 | Document | Contents |
 | --- | --- |
 | [`README.md`](../README.md) | Entry point: what Minerva is, one-command deployment, structure |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Official contribution guide |
-| [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Code of conduct |
 | [`SECURITY.md`](../SECURITY.md) | Security policy, threat model, and attack surfaces |
 | [`NOTICE`](../NOTICE) | Upstream and fork copyright notices |
 | [`LICENSE`](../LICENSE) | The full AGPL v3 |
