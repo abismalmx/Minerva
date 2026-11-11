@@ -129,7 +129,6 @@ Your **account passphrase** is never stored either. The Worker keeps only a stre
 - Your books live on **your disk**, in **your bucket**, or in **your** WebDAV / Google Drive / S3 / OneDrive / iCloud.
 - **No account is required.** The whole app works signed out.
 - **No purchase, no payment cloud.** A self-hosted deployment has no store, so every feature is unlocked.
-- **KOReader** syncs with the same server through the Minerva plugin (`apps/minerva.koplugin`).
 
 ---
 
@@ -314,7 +313,6 @@ All of them run from the monorepo root.
 | `pnpm test --run` | The same suite, a single run |
 | `pnpm --filter @minerva/app test:browser` | Browser tests (Chromium) |
 | `pnpm --filter @minerva/app test:tauri` | Tauri integration tests |
-| `pnpm --filter @minerva/app test:lua` | KOReader plugin tests |
 | `pnpm fmt:check` / `pnpm clippy:check` | `cargo fmt` / `cargo clippy` on the Rust backend |
 | `pnpm check:eink-identity` | Checks the parity of the e-ink identity list |
 | `pnpm deploy:cloudflare` | Deploys the Worker |
@@ -346,7 +344,6 @@ minerva/
 │   │   └── docs/                    # Application technical documentation
 │   ├── minerva-calibre-plugin/      # Calibre plugin
 │   ├── minerva-crosspoint-plugin/   # CrossPoint plugin
-│   └── minerva.koplugin/            # KOReader plugin (Lua)
 ├── packages/                        # Dependencies with their own upstream (submodules)
 ├── data/                            # Icons, screenshots and release metadata
 ├── docs/                            # Guides and runbooks

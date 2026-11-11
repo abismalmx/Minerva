@@ -5,9 +5,7 @@
   "scripts": {
     "deploy:cloudflare": "bash scripts/deploy-cloudflare.sh",
     "test": "pnpm --filter @minerva/app test",
-    "test:lua": "pnpm --filter @minerva/app test:lua",
     "lint": "pnpm --filter @minerva/app lint",
-    "lint:lua": "pnpm --filter @minerva/app lint:lua",
     "check:eink-identity": "node scripts/check-eink-identity-sync.mjs",
     "tauri": "pnpm --filter @minerva/app tauri",
     "dev-web": "pnpm --filter @minerva/app dev-web",

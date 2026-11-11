@@ -9,7 +9,7 @@ Migration 020 adds a second tier: `stat_pages` keeps a **hot window** (rows whos
 `updated_at` is younger than `STATS_COMPACT_WINDOW_DAYS`, default 7), and a cron job
 compacts older rows into **immutable per-user JSON segments** in R2, listed in the
 `stat_archives` manifest. The stats pull composes its pages from segments + hot rows
-**server-side**: the sync API, the app and the koplugin are unchanged.
+**server-side**: the sync API and the app are unchanged.
 
 ## Pieces
 

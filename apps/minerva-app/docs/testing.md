@@ -202,18 +202,13 @@ the same port — `chrome://inspect` in a local Chrome, or
   it does only for `MINERVA_CDP_PORT`; Chromium logs "DevTools remote debugging is
   disallowed by the system admin" for a stray switch.
 
-## crengine XPointer Oracle (KOReader sync)
+## crengine XPointer Oracle
 
 KOReader stores positions as crengine XPointers; `src/utils/xcfi.ts` converts them to and from
-CFIs. The only trustworthy reference for what crengine emits is crengine itself, so
-`apps/minerva.koplugin/scripts/xpointer-oracle.lua` runs headlessly inside a KOReader emulator
-build and dumps crengine's XPointer pair and text for every visible word of an EPUB:
+CFIs. The only trustworthy reference for what crengine emits is crengine itself, so the oracle
+dumps crengine's XPointer pair and text for every visible word of an EPUB. The oracle script
+lived in the KOReader plugin and went away with it; the committed fixtures it produced did not.
 
-```bash
-cd <koreader-emulator>/koreader
-KO_HOME=/tmp/ko-oracle ./luajit /path/to/minerva/apps/minerva.koplugin/scripts/xpointer-oracle.lua \
-  /path/to/book.epub /path/to/book.crengine.json 40   # keep one word in 40
-```
 
 `src/__tests__/utils/xcfi.crengine-oracle.test.ts` then checks both sync directions for every
 sampled word: crengine's pointers must resolve to exactly that word, and a highlight on that word

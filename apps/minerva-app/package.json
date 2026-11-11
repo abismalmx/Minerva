@@ -23,8 +23,6 @@
     "i18n:extract": "i18next-scanner --config i18next-scanner.config.cjs",
     "i18n:extract:ext": "pnpm --filter @minerva/send-to-minerva-extension i18n:extract",
     "lint": "tsc --noEmit && biome lint .",
-    "lint:lua": "node ../minerva.koplugin/scripts/lint-koplugin.mjs",
-    "test:lua": "node ../minerva.koplugin/scripts/test-koplugin.mjs",
     "test": "dotenv -e .env -e .env.test.local -- vitest",
     "test:extension": "dotenv -e .env -e .env.test.local -- vitest extensions/send-to-minerva/ --run",
     "test:coverage": "dotenv -e .env -e .env.test.local -- vitest run --coverage",

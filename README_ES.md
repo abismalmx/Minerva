@@ -129,7 +129,6 @@ Tu **passphrase de cuenta** tampoco se guarda nunca. El Worker conserva solo una
 - Tus libros viven en **tu disco**, en **tu bucket** o en **tu** WebDAV / Google Drive / S3 / OneDrive / iCloud.
 - **No hace falta cuenta.** La app funciona entera sin registrarse.
 - **Sin compras, sin nube de pago.** En un despliegue propio no hay tienda, así que todas las funciones están disponibles.
-- **KOReader** sincroniza con el mismo servidor mediante el plugin de Minerva (`apps/minerva.koplugin`).
 
 ---
 
@@ -314,7 +313,6 @@ Todos se ejecutan desde la raíz del monorepo.
 | `pnpm test --run` | La misma suite, una sola vez |
 | `pnpm --filter @minerva/app test:browser` | Tests de navegador (Chromium) |
 | `pnpm --filter @minerva/app test:tauri` | Tests de integración de Tauri |
-| `pnpm --filter @minerva/app test:lua` | Tests del plugin de KOReader |
 | `pnpm fmt:check` / `pnpm clippy:check` | `cargo fmt` / `cargo clippy` sobre el backend Rust |
 | `pnpm check:eink-identity` | Comprueba la paridad de la lista de identidad en e-ink |
 | `pnpm deploy:cloudflare` | Despliega el Worker |
@@ -346,7 +344,6 @@ minerva/
 │   │   └── docs/                    # Documentación técnica de la app
 │   ├── minerva-calibre-plugin/      # Plugin de Calibre
 │   ├── minerva-crosspoint-plugin/   # Plugin de CrossPoint
-│   └── minerva.koplugin/            # Plugin para KOReader (Lua)
 ├── packages/                        # Dependencias con upstream propio (submódulos)
 ├── data/                            # Iconos, capturas y metadatos de release
 ├── docs/                            # Guías y runbooks

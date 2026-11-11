@@ -49,8 +49,6 @@ target
 fastlane/report.xml
 fastlane/metadata/android/en-US/changelogs
 
-*.koplugin.zip
-
 # nix
 result*
 
@@ -68,9 +66,6 @@ result*
 
 fastlane/staging/
 fastlane/metadata-play/android/en-US/changelogs
-
-apps/minerva.koplugin/bin/
-apps/minerva.koplugin/native/localsend-bin/target/
 
 # scripts/tauri.mjs parks the wry Cargo.lock here during a Linux CEF build
 /Cargo.lock.wry
