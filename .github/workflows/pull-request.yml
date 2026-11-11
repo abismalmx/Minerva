@@ -118,11 +118,20 @@ jobs:
       - name: install playwright browsers
         working-directory: apps/minerva-app
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
-          fi
+          # The runner's default apt mirror (azure.archive.ubuntu.com) sometimes fails
+          # to resolve, which failed the whole job. Use the main Ubuntu archive and
+          # retry the install a few times before giving up.
+          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+          for attempt in 1 2 3; do
+            if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
+              npx playwright install-deps chromium
+            else
+              npx playwright install --with-deps chromium
+            fi && exit 0
+            echo "::warning::playwright install failed (attempt $attempt), retrying"
+            sleep 20
+          done
+          exit 1
 
       - name: run web e2e tests
         id: web_e2e
@@ -179,11 +188,20 @@ jobs:
         if: matrix.shard == 1
         working-directory: apps/minerva-app
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
-          fi
+          # The runner's default apt mirror (azure.archive.ubuntu.com) sometimes fails
+          # to resolve, which failed the whole job. Use the main Ubuntu archive and
+          # retry the install a few times before giving up.
+          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+          for attempt in 1 2 3; do
+            if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
+              npx playwright install-deps chromium
+            else
+              npx playwright install --with-deps chromium
+            fi && exit 0
+            echo "::warning::playwright install failed (attempt $attempt), retrying"
+            sleep 20
+          done
+          exit 1
 
       - name: run web unit tests (shard ${{ matrix.shard }}/2)
         working-directory: apps/minerva-app
