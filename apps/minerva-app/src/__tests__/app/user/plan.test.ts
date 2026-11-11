@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getPlanDetails,
-  getSubscriptionIntervals,
-  getYearlySavingsPercent,
-} from '@/app/user/utils/plan';
+import { getPlanDetails } from '@/app/user/utils/plan';
 import { AvailablePlan, UserPlan, PlanInterval } from '@/types/quota';
 
 // getPlanDetails expects AvailablePlan[].
@@ -328,58 +324,6 @@ describe('yearly billing', () => {
       const result = getPlanDetails('pro', [], 'year');
       expect(result.price).not.toBe(999);
       expect(result.price).toBeGreaterThan(999);
-    });
-  });
-
-  describe('getSubscriptionIntervals', () => {
-    it('offers only monthly when the store has no yearly price', () => {
-      const monthlyOnly = catalog.filter((p) => p.interval === 'month');
-      expect(getSubscriptionIntervals(monthlyOnly)).toEqual(['month']);
-    });
-
-    it('offers yearly once any subscription tier has a yearly price', () => {
-      expect(getSubscriptionIntervals(catalog)).toEqual(['month', 'year']);
-    });
-
-    it('ignores lifetime purchases when deciding', () => {
-      const purchases = [
-        makePlan({ plan: 'purchase', productId: 'price_1gb', price: 199, interval: 'lifetime' }),
-      ];
-      expect(getSubscriptionIntervals(purchases)).toEqual(['month']);
-    });
-
-    it('offers only monthly for an empty catalog', () => {
-      expect(getSubscriptionIntervals([])).toEqual(['month']);
-    });
-  });
-
-  describe('getYearlySavingsPercent', () => {
-    it('computes the discount against twelve monthly payments', () => {
-      // plus: 3999 vs 5988 -> 33.2%, pro: 7999 vs 11988 -> 33.3%
-      expect(getYearlySavingsPercent(catalog)).toBe(33);
-    });
-
-    it('reports the largest saving across tiers', () => {
-      const uneven = [
-        makePlan({ plan: 'plus', price: 500, interval: 'month' }),
-        makePlan({ plan: 'plus', price: 3000, interval: 'year' }), // 50%
-        makePlan({ plan: 'pro', price: 1000, interval: 'month' }),
-        makePlan({ plan: 'pro', price: 10800, interval: 'year' }), // 10%
-      ];
-      expect(getYearlySavingsPercent(uneven)).toBe(50);
-    });
-
-    it('returns null when a tier lacks one of the two intervals', () => {
-      const monthlyOnly = catalog.filter((p) => p.interval === 'month');
-      expect(getYearlySavingsPercent(monthlyOnly)).toBeNull();
-    });
-
-    it('returns null when the yearly price is not actually cheaper', () => {
-      const noSaving = [
-        makePlan({ plan: 'plus', price: 499, interval: 'month' }),
-        makePlan({ plan: 'plus', price: 5988, interval: 'year' }),
-      ];
-      expect(getYearlySavingsPercent(noSaving)).toBeNull();
     });
   });
 });

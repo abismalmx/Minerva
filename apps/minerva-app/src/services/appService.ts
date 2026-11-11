@@ -72,7 +72,6 @@ export abstract class BaseAppService implements AppService {
   hasOrientationLock = false;
   hasScreenBrightness = false;
   hasAmbientLightSensor = false;
-  hasIAP = false;
   canCustomizeRootDir = false;
   canReadExternalDir = false;
   supportsCoverThumbnailOptimization = false;
@@ -80,7 +79,6 @@ export abstract class BaseAppService implements AppService {
   supportsViewTransitionsAPI = false;
   supportsViewTransitionGroup = false;
   distChannel = 'minerva' as DistChannel;
-  storefrontRegionCode: string | null = null;
   isOnlineCatalogsAccessible = true;
 
   protected CURRENT_MIGRATION_VERSION = 20260706;

@@ -41,42 +41,6 @@ const getProductFeature = (productId: string): QuotaFeature | undefined => {
   return undefined;
 };
 
-// Only Plus and Pro are sold on a recurring interval; `purchase` is one-time
-// and `free` has no price to compare.
-const SUBSCRIPTION_TIERS: UserPlan[] = ['plus', 'pro'];
-
-/**
- * Which billing intervals the store front may offer. Yearly only appears once
- * the store actually returns a yearly price for a subscription tier, so this
- * ships safely ahead of the App Store / Play SKUs existing.
- */
-export const getSubscriptionIntervals = (availablePlans: AvailablePlan[]): PlanInterval[] => {
-  const hasYearly = availablePlans.some(
-    (plan) => plan.interval === 'year' && SUBSCRIPTION_TIERS.includes(plan.plan),
-  );
-  return hasYearly ? ['month', 'year'] : ['month'];
-};
-
-/**
- * The headline discount for paying yearly, as a whole percentage off twelve
- * monthly payments. Returns the largest saving across tiers, or `null` when no
- * tier has both intervals priced or the yearly price saves nothing — the badge
- * is then omitted rather than claiming a discount that isn't there.
- */
-export const getYearlySavingsPercent = (availablePlans: AvailablePlan[]): number | null => {
-  let best: number | null = null;
-  for (const tier of SUBSCRIPTION_TIERS) {
-    const monthly = availablePlans.find((p) => p.plan === tier && p.interval === 'month');
-    const yearly = availablePlans.find((p) => p.plan === tier && p.interval === 'year');
-    if (!monthly?.price || !yearly?.price) continue;
-    const saving = Math.floor((1 - yearly.price / (monthly.price * 12)) * 100);
-    if (saving > 0 && (best === null || saving > best)) {
-      best = saving;
-    }
-  }
-  return best;
-};
-
 /**
  * Per-tier accent. The store front is the one surface that is actively selling,
  * so it carries colour the rest of the app deliberately does not.
@@ -141,7 +105,7 @@ export const getPlanAccent = (plan: UserPlan): PlanAccent =>
 
 export function getPlanDetails(
   planCode: UserPlan,
-  availablePlans: AvailablePlan[],
+  availablePlans: AvailablePlan[] = [],
   interval: PlanInterval = 'month',
 ): PlanDetails {
   const availablePlan = availablePlans.find(

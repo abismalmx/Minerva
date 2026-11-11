@@ -123,11 +123,6 @@ interface SelectDirectoryResponse {
   error?: string;
 }
 
-export interface GetStorefrontRegionCodeResponse {
-  regionCode?: string;
-  error?: string;
-}
-
 export interface RefreshEinkScreenResponse {
   success: boolean;
   error?: string;
@@ -323,13 +318,6 @@ export async function selectDirectory(): Promise<SelectDirectoryResponse> {
 // while the picker is in the foreground (#1217).
 export async function showFilePicker(): Promise<void> {
   await invoke('plugin:native-bridge|show_file_picker');
-}
-
-export async function getStorefrontRegionCode(): Promise<GetStorefrontRegionCodeResponse> {
-  const result = await invoke<GetStorefrontRegionCodeResponse>(
-    'plugin:native-bridge|get_storefront_region_code',
-  );
-  return result;
 }
 
 /**

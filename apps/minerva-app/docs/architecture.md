@@ -55,7 +55,6 @@ flowchart LR
         Hardcover["Hardcover GraphQL"]
         Readwise["Readwise"]
         TTS["Edge TTS"]
-        IAP["Apple / Google IAP"]
     end
 
     Desktop --> Backend
@@ -74,7 +73,6 @@ flowchart LR
     AppApi --> OPDS
     AppApi --> Hardcover
     AppApi --> TTS
-    AppApi --> IAP
 
     Web -.direct.-> Dict
     Desktop -.direct.-> Dict
@@ -259,7 +257,7 @@ offline route at `/offline`.
 
 The single most important abstraction in the codebase is
 `src/services/appService.ts`. Every piece of code that touches "the platform"
-(file system, native dialogs, shell open, native TTS, IAP, dir scanning,
+(file system, native dialogs, shell open, native TTS, dir scanning,
 deep links, etc.) goes through an `AppService` interface. There are three
 implementations:
 
@@ -347,8 +345,6 @@ stripe/portal            -> billing portal redirect
 stripe/plans             -> plan listing
 stripe/check             -> subscription state
 stripe/webhook           -> Stripe webhook handler
-google/iap-verify        -> Google Play IAP verification
-apple/iap-verify         -> App Store IAP verification
 share/*                  -> share-link landing + read-only render
 ```
 

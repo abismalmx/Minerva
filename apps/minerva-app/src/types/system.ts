@@ -102,7 +102,6 @@ export interface AppService {
   hasScreenBrightness: boolean;
   /** True when a hardware ambient light sensor can drive Ambient Mode. */
   hasAmbientLightSensor: boolean;
-  hasIAP: boolean;
   isMobile: boolean;
   isAppDataSandbox: boolean;
   isMobileApp: boolean;
@@ -122,7 +121,6 @@ export interface AppService {
   supportsViewTransitionsAPI: boolean;
   supportsViewTransitionGroup: boolean;
   distChannel: DistChannel;
-  storefrontRegionCode: string | null;
   isOnlineCatalogsAccessible: boolean;
 
   /**

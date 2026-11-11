@@ -172,7 +172,7 @@ Concretely:
 - **Zero Sentry.** No `@sentry/*` in the workspace nor in the Rust crate tree.
 - **Zero Mixpanel / Amplitude / Segment / GA / gtag.** Verified in both `package.json` and `pnpm-lock.yaml`.
 - **Zero telemetry crates in Rust.** `apps/minerva-app/src-tauri/Cargo.toml` declares no analytics client.
-- **No persistent user identifiers** sent to third parties. The payment APIs (Stripe, Apple/Google IAP) receive what they need to charge, and nothing else in the app emits product events anywhere.
+- **No persistent user identifiers** sent to third parties. Nothing in the app emits product events anywhere.
 
 What **does** exist, and is not product telemetry:
 
@@ -180,8 +180,7 @@ What **does** exist, and is not product telemetry:
 | --- | --- | --- |
 | Local reading statistics | `src/services/statistics/` → SQLite `statistics.db` | Stays on the device. Feeds the "Continue reading" widget and the statistics panel. |
 | `ReadingStatsTracker` | `src/app/reader/components/ReadingStatsTracker.tsx` | Writes to the local database; transmits nothing. |
-| `src/libs/payment/iap/telemetry.ts` | IAP verification | Records the outcome of a purchase on your own backend for reconciliation. That is accounting, not behavioral analytics. |
-| Cloudflare Analytics Engine | `wrangler.toml` (`IAP_WEBHOOK_AE`, `STATS_COMPACT_AE`) | Metrics **of the user's own self-hosted server**, in their own Cloudflare account. They never leave their infrastructure. |
+| Cloudflare Analytics Engine | `wrangler.toml` (`STATS_COMPACT_AE`) | Metrics **of the user's own self-hosted server**, in their own Cloudflare account. They never leave their infrastructure. |
 | `head_sampling_rate = 0.01` in `[observability]` | `wrangler.toml` | Telemetry of the Worker's own execution, in the user's Cloudflare account — equivalent to what any self-hosted application emits. |
 
 **Zero-telemetry verification protocol** (operational detail in §6.5):
@@ -259,7 +258,6 @@ minerva/
 │   │   ├── src-tauri/               # Native backend (Rust)
 │   │   ├── workers/                 # Cloudflare Workers
 │   │   │   ├── minerva-sync/        # <-- The self-hostable backend
-│   │   │   ├── iap-reconcile/       # In-app purchase reconciliation
 │   │   │   └── send-email/          # Extension email intake
 │   │   ├── extensions/              # "Send to Minerva" browser extension
 │   │   ├── e2e/                     # UI end-to-end (Playwright)
@@ -282,7 +280,6 @@ The workspace is declared in `pnpm-workspace.yaml`:
 packages:
   - apps/*
   - apps/minerva-app/workers/send-email
-  - apps/minerva-app/workers/iap-reconcile
   - apps/minerva-app/workers/minerva-sync
   - apps/minerva-app/extensions/*
   - packages/foliate-js
@@ -373,7 +370,7 @@ statisticsStore     -> reading statistics
 
 #### 3.3.3 The platform abstraction (`AppService`)
 
-**The single most important abstraction in the codebase.** Everything that touches "the platform" (filesystem, native dialogs, shell, native TTS, IAP, directory scanning, deep links) goes through the `AppService` interface in `src/services/appService.ts`, which has three implementations:
+**The single most important abstraction in the codebase.** Everything that touches "the platform" (filesystem, native dialogs, shell, native TTS, directory scanning, deep links) goes through the `AppService` interface in `src/services/appService.ts`, which has three implementations:
 
 ```text
 nativeAppService.ts  -> Tauri (desktop + mobile)
@@ -741,7 +738,6 @@ pnpm test --run src/__tests__/workers/
 | Worker | Function |
 | --- | --- |
 | `workers/minerva-sync` | The sync backend described above |
-| `workers/iap-reconcile` | In-app purchase reconciliation (App Store / Google Play) |
 | `workers/send-email` | Email intake for the "Send to Minerva" extension; normalizes attachments and drops items into the user's inbox |
 
 ### 3.8 Plugins and side surfaces

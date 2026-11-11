@@ -1,7 +1,6 @@
 packages:
   - apps/*
   - apps/minerva-app/workers/send-email
-  - apps/minerva-app/workers/iap-reconcile
   - apps/minerva-app/workers/minerva-sync
   - apps/minerva-app/extensions/*
   - packages/foliate-js

@@ -338,7 +338,6 @@ minerva/
 │   │   ├── src-tauri/               # Native backend in Rust
 │   │   ├── workers/
 │   │   │   ├── minerva-sync/        # <-- The self-hostable backend
-│   │   │   ├── iap-reconcile/       # In-app purchase reconciliation
 │   │   │   └── send-email/          # Extension email intake
 │   │   ├── extensions/              # "Send to Minerva" browser extension
 │   │   └── docs/                    # Application technical documentation

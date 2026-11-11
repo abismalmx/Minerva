@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 // Unit tests for the self-hosted sync Worker's pure logic. The Worker
 // (workers/minerva-sync) is a self-contained Cloudflare project; only its
-// runtime-agnostic helpers are exercised here, the same way the iap-reconcile
-// Worker is covered.
+// runtime-agnostic helpers are exercised here.
 import {
   base64urlDecode,
   base64urlEncode,

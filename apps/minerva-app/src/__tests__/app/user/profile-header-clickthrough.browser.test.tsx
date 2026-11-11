@@ -1,8 +1,7 @@
 /**
  * The profile header is a transparent, full-width `fixed` strip. Content
  * scrolls visibly beneath it, so its empty middle must not absorb clicks —
- * anything scrolled into that band (the billing interval toggle, most
- * visibly) would otherwise be unclickable.
+ * anything scrolled into that band would otherwise be unclickable.
  *
  * Needs real layout and real Tailwind, so it runs as a browser test.
  */

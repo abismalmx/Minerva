@@ -42,12 +42,7 @@ import { needsQueryRangeReads } from '@/utils/ua';
 import { getOSPlatform, isContentURI, isFileURI, isValidURL } from '@/utils/misc';
 import { getDirPath, getFilename } from '@/utils/path';
 import { NativeFile, RemoteFile } from '@/utils/file';
-import {
-  copyURIToPath,
-  getStorefrontRegionCode,
-  hasAmbientLightSensor,
-  saveImageToGallery,
-} from '@/utils/bridge';
+import { copyURIToPath, hasAmbientLightSensor, saveImageToGallery } from '@/utils/bridge';
 import { galleryFileName } from '@/utils/image';
 import { copyFiles } from '@/utils/files';
 import { detectViewTransitionGroup, detectViewTransitionsAPI } from '@/utils/viewTransition';
@@ -605,7 +600,6 @@ export class NativeAppService extends BaseAppService {
     (OS_TYPE === 'ios' && getOSPlatform() === 'ios') || OS_TYPE === 'android';
   override hasScreenBrightness = OS_TYPE === 'ios' || OS_TYPE === 'android';
   override hasAmbientLightSensor = false;
-  override hasIAP = OS_TYPE === 'ios' || (OS_TYPE === 'android' && DIST_CHANNEL === 'playstore');
   // CustomizeRootDir has a blocker on macOS App Store builds due to Security Scoped Resource restrictions.
   // See: https://github.com/tauri-apps/tauri/issues/3716
   override canCustomizeRootDir = DIST_CHANNEL !== 'appstore';
@@ -622,7 +616,6 @@ export class NativeAppService extends BaseAppService {
   override supportsViewTransitionsAPI = OS_TYPE !== 'linux' && detectViewTransitionsAPI();
   override supportsViewTransitionGroup = OS_TYPE !== 'linux' && detectViewTransitionGroup();
   override distChannel = DIST_CHANNEL;
-  override storefrontRegionCode: string | null = null;
   override isOnlineCatalogsAccessible = true;
 
   private execDir?: string = undefined;
@@ -688,19 +681,6 @@ export class NativeAppService extends BaseAppService {
     }
     if (this.isIOSApp) {
       this.isOnlineCatalogsAccessible = this.distChannel !== 'appstore';
-      try {
-        const res = await getStorefrontRegionCode();
-        if (res?.regionCode) {
-          this.storefrontRegionCode = res.regionCode;
-        }
-      } catch (err) {
-        // Storefront.current is nil on simulators without a signed-in
-        // App Store account, and may also fail on real devices with no
-        // StoreKit configuration. Treat as "unknown region" — we leave
-        // storefrontRegionCode as null and let downstream features that
-        // depend on region degrade gracefully.
-        console.warn('[nativeAppService] getStorefrontRegionCode failed:', err);
-      }
     }
     if (this.isAndroidApp) {
       try {

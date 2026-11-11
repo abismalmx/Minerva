@@ -7,8 +7,7 @@ let package = Package(
   name: "tauri-plugin-native-bridge",
   platforms: [
     .macOS(.v10_13),
-    // Matches the app's IPHONEOS_DEPLOYMENT_TARGET (15.0); StoreKit's
-    // Storefront is used unguarded and needs iOS 15. SPM takes the
+    // Matches the app's IPHONEOS_DEPLOYMENT_TARGET (15.0). SPM takes the
     // deployment floor from this stanza, not from the build triple.
     // (String form: `.v15` needs swift-tools 5.5, this manifest is 5.3.)
     .iOS("15.0"),

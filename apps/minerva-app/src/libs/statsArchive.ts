@@ -49,7 +49,7 @@ export interface StatArchiveManifestRow {
 }
 
 // Minimal local typings for the Cloudflare bindings (the project does not
-// depend on @cloudflare/workers-types; same approach as iap/telemetry.ts).
+// depend on @cloudflare/workers-types).
 export interface R2ObjectBodyLike {
   size: number;
   text(): Promise<string>;
