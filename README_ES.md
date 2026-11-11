@@ -17,15 +17,11 @@
 
 <br>
 
-[![CI](https://github.com/abismalmx/Minerva/actions/workflows/pull-request.yml/badge.svg)](https://github.com/abismalmx/Minerva/actions/workflows/pull-request.yml)
-[![Secret scan](https://github.com/abismalmx/Minerva/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/abismalmx/Minerva/actions/workflows/secret-scan.yml)
 [![Licencia](https://img.shields.io/badge/licencia-AGPL--3.0-teal)](LICENSE)
+[![Telemetría](https://img.shields.io/badge/telemetría-ninguna-ff6d00)](#privacidad-absoluta-cero-telemetría)
+[![Tauri](https://img.shields.io/badge/Tauri-2-orange)](https://v2.tauri.app)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1%20%2B%20R2-f38020)](https://workers.cloudflare.com)
 [![KOSync](https://img.shields.io/badge/KOSync-compatible-4a90d9)](https://koreader.rocks/)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
-[![Tauri](https://img.shields.io/badge/Tauri-2-orange)](https://v2.tauri.app)
-[![pnpm](https://img.shields.io/badge/pnpm-11.1.1-yellow)](https://pnpm.io)
-[![Telemetría](https://img.shields.io/badge/telemetría-ninguna-ff6d00)](#privacidad-absoluta-cero-telemetría)
 
 </div>
 
