@@ -39,6 +39,22 @@ if (typeof globalWithCSS.CSS.escape !== 'function') {
   };
 }
 
+// In the jsdom environment `Blob` is jsdom's implementation while `Response` is
+// Node's (undici). `Response.blob()` therefore hands back an undici Blob, and
+// jsdom's `new Blob([blob])` does not recognize a foreign Blob: it falls back to
+// stringifying it, so the bytes become the literal text "[object Blob]".
+// zip.js builds and reads every archive through `new Response(...).blob()` (its
+// BlobWriter), so each ZIP-backed test saw corrupted bytes. Wrap `blob()` so
+// the result is built with this environment's own `Blob`.
+if (typeof Response !== 'undefined' && typeof Blob !== 'undefined') {
+  const originalBlob = Response.prototype.blob;
+  Response.prototype.blob = async function (this: Response) {
+    const blob = await originalBlob.call(this);
+    if (blob instanceof Blob) return blob;
+    return new Blob([await blob.arrayBuffer()], { type: blob.type });
+  };
+}
+
 // matchMedia mock
 if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query: string) =>
