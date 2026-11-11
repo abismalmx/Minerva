@@ -3,11 +3,10 @@ import { DEFAULT_BOOKORBIT_SETTINGS, DEFAULT_SYSTEM_SETTINGS } from '@/services/
 import { SETTINGS_ENCRYPTED_FIELDS, SETTINGS_WHITELIST } from '@/services/sync/adapters/settings';
 
 describe('BookOrbit settings', () => {
-  it('syncs the self-signed certificate choice for KOSync and BookOrbit as plain settings', () => {
-    for (const field of ['kosync.allowSelfSignedCert', 'bookorbit.allowSelfSignedCert']) {
-      expect(SETTINGS_WHITELIST).toContain(field);
-      expect(SETTINGS_ENCRYPTED_FIELDS).not.toContain(field);
-    }
+  it('syncs the self-signed certificate choice for BookOrbit as a plain setting', () => {
+    const field = 'bookorbit.allowSelfSignedCert';
+    expect(SETTINGS_WHITELIST).toContain(field);
+    expect(SETTINGS_ENCRYPTED_FIELDS).not.toContain(field);
   });
 
   it('has safe defaults and is mounted on SystemSettings', () => {

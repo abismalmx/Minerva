@@ -42,7 +42,7 @@ const baseHighlight = {
 const makeSettings = (overrides: Partial<SystemSettings> = {}): SystemSettings =>
   ({
     globalReadSettings: { ...baseHighlight },
-    kosync: { serverUrl: '', username: '', userkey: '', password: '' },
+    bookorbit: { serverUrl: '', username: '', userkey: '', password: '' },
     readwise: { accessToken: '' },
     hardcover: { accessToken: '' },
     notion: {
@@ -200,25 +200,25 @@ describe('publishSettingsIfChanged', () => {
     ]);
     // Unchanged fields stay out of the diff
     expect(patch.globalReadSettings?.customHighlightColors).toBeUndefined();
-    expect(patch.kosync).toBeUndefined();
+    expect(patch.bookorbit).toBeUndefined();
   });
 
-  test('detects nested changes (kosync.serverUrl)', async () => {
+  test('detects nested changes (bookorbit.serverUrl)', async () => {
     await publishSettingsIfChanged(makeSettings());
     publishMock.mockReset();
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
-          serverUrl: 'https://kosync.example',
+        bookorbit: {
+          serverUrl: 'https://books.example',
           username: '',
           userkey: '',
           password: '',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     expect(publishMock).toHaveBeenCalledTimes(1);
     const patch = publishMock.mock.calls[0]![1].patch as Partial<SystemSettings>;
-    expect(patch.kosync?.serverUrl).toBe('https://kosync.example');
+    expect(patch.bookorbit?.serverUrl).toBe('https://books.example');
   });
 
   test('does NOT publish dictionarySettings.providerOrder by default (auto-mutation gate)', async () => {
@@ -343,12 +343,12 @@ describe('publishSettingsIfChanged', () => {
     isUnlocked = false;
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
+        bookorbit: {
           serverUrl: '',
           username: '',
           userkey: '',
           password: 'hunter2',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     expect(ensurePassphraseMock).toHaveBeenCalledTimes(1);
@@ -357,7 +357,7 @@ describe('publishSettingsIfChanged', () => {
 
   describe('credentials category gate', () => {
     // The 'credentials' meta-toggle defaults OFF. When OFF, the settings
-    // publisher must skip every ENCRYPTED_PATH (kosync.username/userkey/
+    // publisher must skip every ENCRYPTED_PATH (bookorbit.username/userkey/
     // password, readwise.accessToken, hardcover.accessToken) entirely:
     // no patch entry, no proactive passphrase prompt, no stored hash.
     // Non-credential plaintext settings still publish normally.
@@ -370,17 +370,17 @@ describe('publishSettingsIfChanged', () => {
       } as never);
     };
 
-    test('does NOT trigger the passphrase gate when credentials sync is OFF and a kosync password is set', async () => {
+    test('does NOT trigger the passphrase gate when credentials sync is OFF and a bookorbit password is set', async () => {
       await setCredentials(undefined); // default OFF
       isUnlocked = false;
       await publishSettingsIfChanged(
         makeSettings({
-          kosync: {
-            serverUrl: 'https://kosync.example',
+          bookorbit: {
+            serverUrl: 'https://books.example',
             username: 'alice',
             userkey: 'secret-key',
             password: 'hunter2',
-          } as SystemSettings['kosync'],
+          } as SystemSettings['bookorbit'],
         }),
       );
       expect(ensurePassphraseMock).not.toHaveBeenCalled();
@@ -391,12 +391,12 @@ describe('publishSettingsIfChanged', () => {
       isUnlocked = false;
       await publishSettingsIfChanged(
         makeSettings({
-          kosync: {
-            serverUrl: 'https://kosync.example',
+          bookorbit: {
+            serverUrl: 'https://books.example',
             username: 'alice',
             userkey: 'secret-key',
             password: 'hunter2',
-          } as SystemSettings['kosync'],
+          } as SystemSettings['bookorbit'],
           readwise: {
             accessToken: 'rw-token',
             enabled: true,
@@ -416,14 +416,14 @@ describe('publishSettingsIfChanged', () => {
           },
         }),
       );
-      // Plaintext kosync.serverUrl still publishes — only the credential
+      // Plaintext bookorbit.serverUrl still publishes — only the credential
       // sub-fields are gated.
       expect(publishMock).toHaveBeenCalledTimes(1);
       const patch = publishMock.mock.calls[0]![1].patch as Partial<SystemSettings>;
-      expect(patch.kosync?.serverUrl).toBe('https://kosync.example');
-      expect(patch.kosync?.username).toBeUndefined();
-      expect(patch.kosync?.userkey).toBeUndefined();
-      expect(patch.kosync?.password).toBeUndefined();
+      expect(patch.bookorbit?.serverUrl).toBe('https://books.example');
+      expect(patch.bookorbit?.username).toBeUndefined();
+      expect(patch.bookorbit?.userkey).toBeUndefined();
+      expect(patch.bookorbit?.password).toBeUndefined();
       expect(patch.readwise?.accessToken).toBeUndefined();
       expect(patch.hardcover?.accessToken).toBeUndefined();
       expect(patch.notion?.databaseId).toBe('notion-database-id');
@@ -435,12 +435,12 @@ describe('publishSettingsIfChanged', () => {
       isUnlocked = true;
       await publishSettingsIfChanged(
         makeSettings({
-          kosync: {
+          bookorbit: {
             serverUrl: '',
             username: '',
             userkey: '',
             password: 'hunter2',
-          } as SystemSettings['kosync'],
+          } as SystemSettings['bookorbit'],
           notion: {
             enabled: true,
             accessToken: 'notion-token',
@@ -452,7 +452,7 @@ describe('publishSettingsIfChanged', () => {
       );
       expect(publishMock).toHaveBeenCalledTimes(1);
       const patch = publishMock.mock.calls[0]![1].patch as Partial<SystemSettings>;
-      expect(patch.kosync?.password).toBe('hunter2');
+      expect(patch.bookorbit?.password).toBe('hunter2');
       expect(patch.notion?.databaseId).toBe('notion-database-id');
       expect(patch.notion?.accessToken).toBe('notion-token');
     });
@@ -572,14 +572,14 @@ describe('publishSettingsIfChanged', () => {
 
   test('empty encrypted credential is dropped from publish entirely (no gate, no patch)', async () => {
     isUnlocked = false;
-    // makeSettings has all kosync credentials as ''. Plaintext changes
+    // makeSettings has all bookorbit credentials as ''. Plaintext changes
     // (highlight palette) trigger the publish; encrypted empty fields
     // should NOT appear in the patch and should NOT trigger the gate.
     await publishSettingsIfChanged(makeSettings());
     expect(ensurePassphraseMock).not.toHaveBeenCalled();
     expect(publishMock).toHaveBeenCalledTimes(1);
     const patch = publishMock.mock.calls[0]![1].patch as Partial<SystemSettings>;
-    expect(patch.kosync?.password).toBeUndefined();
+    expect(patch.bookorbit?.password).toBeUndefined();
     expect(patch.readwise?.accessToken).toBeUndefined();
     expect(patch.hardcover?.accessToken).toBeUndefined();
     expect(patch.notion?.accessToken).toBeUndefined();
@@ -595,7 +595,7 @@ describe('publishSettingsIfChanged', () => {
     // initSettingsSync(initialSettings) seeds the snapshot from the
     // just-loaded disk so the same-value first publish skips them.
     //
-    // Credential connection metadata (webdav.rootPath, kosync.serverUrl, ...)
+    // Credential connection metadata (webdav.rootPath, bookorbit.serverUrl, ...)
     // is push-hash tracked, NOT disk-seeded, so it is intentionally exempt
     // from this priming — that exemption is what lets a configured-but-never-
     // published URL reach the other devices (#5141).
@@ -620,29 +620,29 @@ describe('publishSettingsIfChanged', () => {
 
   test('initSettingsSync priming does not block legitimate user changes against the seeded baseline', async () => {
     const diskSettings = makeSettings({
-      kosync: {
+      bookorbit: {
         serverUrl: '',
         username: '',
         userkey: '',
         password: '',
-      } as SystemSettings['kosync'],
+      } as SystemSettings['bookorbit'],
     });
     initSettingsSync(diskSettings);
 
-    // User changes kosync.serverUrl after boot — must publish.
+    // User changes bookorbit.serverUrl after boot — must publish.
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
-          serverUrl: 'https://kosync.example',
+        bookorbit: {
+          serverUrl: 'https://books.example',
           username: '',
           userkey: '',
           password: '',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     expect(publishMock).toHaveBeenCalledTimes(1);
     const patch = publishMock.mock.calls[0]![1].patch as Partial<SystemSettings>;
-    expect(patch.kosync?.serverUrl).toBe('https://kosync.example');
+    expect(patch.bookorbit?.serverUrl).toBe('https://books.example');
   });
 
   test('re-publishes a disk-configured connection URL that was never synced, so it rejoins its credentials (issue #5141)', async () => {
@@ -695,12 +695,12 @@ describe('publishSettingsIfChanged', () => {
     });
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
+        bookorbit: {
           serverUrl: '',
           username: '',
           userkey: '',
           password: 'hunter2',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     // Publish still fires — plaintext fields go through (none new this
@@ -710,15 +710,15 @@ describe('publishSettingsIfChanged', () => {
     publishMock.mockReset();
 
     // Session still locked, same settings. Hash wasn't stored because
-    // we never unlocked, so the diff catches kosync.password again.
+    // we never unlocked, so the diff catches bookorbit.password again.
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
+        bookorbit: {
           serverUrl: '',
           username: '',
           userkey: '',
           password: 'hunter2',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     expect(publishMock).toHaveBeenCalledTimes(1);
@@ -729,23 +729,23 @@ describe('publishSettingsIfChanged', () => {
     isUnlocked = true;
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
+        bookorbit: {
           serverUrl: '',
           username: '',
           userkey: '',
           password: 'hunter2',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     publishMock.mockReset();
     await publishSettingsIfChanged(
       makeSettings({
-        kosync: {
+        bookorbit: {
           serverUrl: '',
           username: '',
           userkey: '',
           password: 'hunter2',
-        } as SystemSettings['kosync'],
+        } as SystemSettings['bookorbit'],
       }),
     );
     expect(publishMock).not.toHaveBeenCalled();

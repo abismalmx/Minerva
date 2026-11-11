@@ -1324,7 +1324,7 @@
   "Data Sync": "資料同步",
   "Manage Fonts": "管理字型",
   "App settings": "應用程式設定",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "主題、螢光標記顏色以及第三方整合（KOSync、Readwise、Hardcover）",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "主題、螢光標記顏色以及第三方整合（Readwise、Hardcover）",
   "Required while Dictionaries sync is enabled": "啟用詞典同步時必須",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "請設定一組 4 位數的 PIN 碼。每次開啟 Minerva 時都需要輸入。遺忘的 PIN 碼無法復原，清除應用程式資料是重設它的唯一方法。",
   "Credentials": "憑證",

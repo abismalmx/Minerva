@@ -38,8 +38,7 @@ export const useNotebookDocumentCoordinator = (bookKey: string | null) => {
   useEffect(() => {
     if (!bookKey) return;
     const bookHash = getBookHash(bookKey);
-    const profileId =
-      user?.id ?? settings.replicaDeviceId ?? settings.kosync.deviceId ?? 'anonymous-profile';
+    const profileId = user?.id ?? settings.replicaDeviceId ?? 'anonymous-profile';
     const recoveryKey = getNotebookRecoveryKey(profileId, bookHash);
     const coordinator = createNotebookDocumentCoordinator({
       bookHash,
@@ -88,5 +87,5 @@ export const useNotebookDocumentCoordinator = (bookKey: string | null) => {
         if (coordinators.get(bookHash) === coordinator) coordinators.delete(bookHash);
       });
     };
-  }, [bookKey, envConfig, settings.kosync.deviceId, settings.replicaDeviceId, user?.id]);
+  }, [bookKey, envConfig, settings.replicaDeviceId, user?.id]);
 };

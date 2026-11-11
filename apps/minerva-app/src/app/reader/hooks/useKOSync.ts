@@ -32,17 +32,16 @@ type SyncState = 'idle' | 'checking' | 'conflict' | 'synced' | 'error';
 /**
  * Source of the KOSync-protocol config this hook instance syncs against.
  * selectConfig returns null when the provider is not configured; the hook
- * then idles. The kosync provider preserves the original semantics: a client
- * exists once credentials are set, `enabled` is checked at pull/push time.
+ * then idles.
  */
 export interface KosyncProgressProvider {
-  name: 'kosync' | 'bookorbit';
+  name: 'bookorbit';
   selectConfig: (settings: SystemSettings) => KosyncEngineConfig | null;
 }
 
 /**
  * What this hook actually drives: the KOSync wire settings plus the knobs a
- * provider adds on top. `settings.kosync` satisfies it as-is.
+ * provider adds on top.
  */
 export type KosyncEngineConfig = KOSyncSettings & {
   /**
@@ -52,12 +51,6 @@ export type KosyncEngineConfig = KOSyncSettings & {
    * is what KOReader Sync has always done.
    */
   autoSync?: boolean;
-};
-
-export const kosyncProvider: KosyncProgressProvider = {
-  name: 'kosync',
-  selectConfig: (settings) =>
-    settings.kosync.username && settings.kosync.userkey ? settings.kosync : null,
 };
 
 export interface SyncDetails {
@@ -73,7 +66,7 @@ export interface SyncDetails {
   };
 }
 
-export const useKOSync = (bookKey: string, provider: KosyncProgressProvider = kosyncProvider) => {
+export const useKOSync = (bookKey: string, provider: KosyncProgressProvider) => {
   const _ = useTranslation();
   const { appService } = useEnv();
   const { settings } = useSettingsStore();

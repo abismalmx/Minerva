@@ -1309,7 +1309,7 @@
   "Data Sync": "ซิงค์ข้อมูล",
   "Manage Fonts": "จัดการแบบอักษร",
   "App settings": "การตั้งค่าแอป",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "ธีม สีไฮไลต์ และการเชื่อมต่อ (KOSync, Readwise, Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "ธีม สีไฮไลต์ และการเชื่อมต่อ (Readwise, Hardcover)",
   "Required while Dictionaries sync is enabled": "จำเป็นเมื่อเปิดใช้การซิงค์พจนานุกรม",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "เลือก PIN 4 หลัก คุณจะต้องป้อนทุกครั้งที่เปิด Minerva ไม่มีวิธีกู้คืน PIN ที่ลืม การล้างข้อมูลแอปเป็นวิธีเดียวในการรีเซ็ต",
   "Credentials": "ข้อมูลรับรอง",

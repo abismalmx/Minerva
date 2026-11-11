@@ -1098,7 +1098,7 @@
   "OPDS catalogs": "OPDS კატალოგები",
   "Saved catalog URLs and (encrypted) credentials": "შენახული კატალოგის URL-ები და (დაშიფრული) ავტორიზაციის მონაცემები",
   "App settings": "აპლიკაციის პარამეტრები",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "თემა, მარკირების ფერები და ინტეგრაციები (KOSync, Readwise, Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "თემა, მარკირების ფერები და ინტეგრაციები (Readwise, Hardcover)",
   "Credentials": "ავტორიზაციის მონაცემები",
   "Tokens, usernames, and passwords for OPDS, KOReader, Hardcover, Readwise, and WebDAV. When disabled, credentials remain on this device only and are never uploaded.": "ტოკენები, მომხმარებლის სახელები და პაროლები OPDS-ის, KOReader-ის, Hardcover-ის, Readwise-ისა და WebDAV-ისთვის. გამორთვისას ავტორიზაციის მონაცემები რჩება მხოლოდ ამ მოწყობილობაზე და არასდროს იტვირთება.",
   "Reading statistics": "კითხვის სტატისტიკა",

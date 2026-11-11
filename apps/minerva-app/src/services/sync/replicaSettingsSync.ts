@@ -458,9 +458,6 @@ const mergeSettings = (current: SystemSettings, patch: Partial<SystemSettings>):
   if (patch.globalReadSettings) {
     out.globalReadSettings = { ...current.globalReadSettings, ...patch.globalReadSettings };
   }
-  if (patch.kosync) {
-    out.kosync = { ...current.kosync, ...patch.kosync };
-  }
   if (patch.bookorbit) {
     out.bookorbit = { ...current.bookorbit, ...patch.bookorbit };
   }

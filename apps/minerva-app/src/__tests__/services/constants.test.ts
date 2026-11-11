@@ -23,7 +23,6 @@ import {
   BOOK_UNGROUPED_ID,
   SUPPORTED_IMAGE_EXTS,
   IMAGE_ACCEPT_FORMATS,
-  DEFAULT_KOSYNC_SETTINGS,
   READWISE_API_BASE_URL,
   DEFAULT_READWISE_SETTINGS,
   DEFAULT_SYSTEM_SETTINGS,
@@ -180,29 +179,6 @@ describe('services/constants', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // KOSync settings
-  // ---------------------------------------------------------------------------
-  describe('DEFAULT_KOSYNC_SETTINGS', () => {
-    it('is an object with required properties', () => {
-      expect(typeof DEFAULT_KOSYNC_SETTINGS).toBe('object');
-      expect(DEFAULT_KOSYNC_SETTINGS).not.toBeNull();
-    });
-
-    it('has expected keys with correct types', () => {
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.serverUrl).toBe('string');
-      expect(DEFAULT_KOSYNC_SETTINGS.serverUrl).toMatch(/^https?:\/\//);
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.username).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.userkey).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.deviceId).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.deviceName).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.checksumMethod).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.strategy).toBe('string');
-      expect(typeof DEFAULT_KOSYNC_SETTINGS.enabled).toBe('boolean');
-      expect(DEFAULT_KOSYNC_SETTINGS.enabled).toBe(false);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // Readwise settings
   // ---------------------------------------------------------------------------
   describe('Readwise constants', () => {
@@ -285,7 +261,6 @@ describe('services/constants', () => {
     });
 
     it('has nested settings objects', () => {
-      expect(DEFAULT_SYSTEM_SETTINGS.kosync).toBeDefined();
       expect(DEFAULT_SYSTEM_SETTINGS.readwise).toBeDefined();
       expect(DEFAULT_SYSTEM_SETTINGS.aiSettings).toBeDefined();
     });

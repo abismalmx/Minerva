@@ -1309,7 +1309,7 @@
   "Data Sync": "データ同期",
   "Manage Fonts": "フォントを管理",
   "App settings": "アプリ設定",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "テーマ、ハイライトの色、連携 (KOSync、Readwise、Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "テーマ、ハイライトの色、連携 (Readwise、Hardcover)",
   "Required while Dictionaries sync is enabled": "辞書の同期が有効な間は必須",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "4桁のPINを設定してください。Minervaを開くたびに入力する必要があります。忘れたPINを復元する方法はありません。アプリのデータを消去することがリセットする唯一の方法です。",
   "Credentials": "認証情報",

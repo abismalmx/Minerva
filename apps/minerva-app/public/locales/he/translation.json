@@ -1359,7 +1359,7 @@
   "Data Sync": "סנכרון נתונים",
   "Manage Fonts": "ניהול גופנים",
   "App settings": "הגדרות אפליקציה",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "ערכת נושא, צבעי הדגשה ושילובים (KOSync, Readwise, Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "ערכת נושא, צבעי הדגשה ושילובים (Readwise, Hardcover)",
   "Required while Dictionaries sync is enabled": "נדרש כל עוד סנכרון המילונים מופעל",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "בחר PIN בן 4 ספרות. תצטרך להזין אותו בכל פעם שתפתח את Minerva. אין דרך לשחזר PIN שנשכח. ניקוי נתוני האפליקציה הוא הדרך היחידה לאפס אותו.",
   "Credentials": "אישורים",

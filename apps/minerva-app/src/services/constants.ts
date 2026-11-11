@@ -21,7 +21,6 @@ import {
   HardcoverSettings,
   PageboundSettings,
   BookOrbitSettings,
-  KOSyncSettings,
   LibraryGroupByType,
   LibrarySortByType,
   NotionSettings,
@@ -86,18 +85,6 @@ export const BOOK_UNGROUPED_ID = '';
 
 export const SUPPORTED_IMAGE_EXTS = ['png', 'jpg', 'jpeg'];
 export const IMAGE_ACCEPT_FORMATS = SUPPORTED_IMAGE_EXTS.map((ext) => `.${ext}`).join(', ');
-
-export const DEFAULT_KOSYNC_SETTINGS = {
-  serverUrl: 'https://sync.koreader.rocks/', // https://kosync.ak-team.com:3042/
-  username: '',
-  userkey: '',
-  deviceId: '',
-  deviceName: '',
-  checksumMethod: 'binary',
-  strategy: 'prompt',
-  sendMetadata: false,
-  enabled: false,
-} as KOSyncSettings;
 
 export const DEFAULT_BOOKORBIT_SETTINGS = {
   enabled: false,
@@ -267,7 +254,6 @@ export const DEFAULT_SYSTEM_SETTINGS: Partial<SystemSettings> = {
     },
   },
 
-  kosync: DEFAULT_KOSYNC_SETTINGS,
   bookorbit: DEFAULT_BOOKORBIT_SETTINGS,
   readwise: DEFAULT_READWISE_SETTINGS,
   hardcover: DEFAULT_HARDCOVER_SETTINGS,

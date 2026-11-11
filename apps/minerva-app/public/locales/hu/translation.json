@@ -1334,7 +1334,7 @@
   "Data Sync": "Adatszinkronizálás",
   "Manage Fonts": "Betűtípusok kezelése",
   "App settings": "Alkalmazásbeállítások",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "Téma, kiemelési színek és integrációk (KOSync, Readwise, Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "Téma, kiemelési színek és integrációk (Readwise, Hardcover)",
   "Required while Dictionaries sync is enabled": "Szükséges, amíg a Szótárak szinkronizálása be van kapcsolva",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "Válasszon egy 4 számjegyű PIN-kódot. Minden alkalommal meg kell adnia, amikor megnyitja a Minervaet. Az elfelejtett PIN-kódot nem lehet visszaállítani. Az alkalmazás adatainak törlése az egyetlen módja a visszaállításának.",
   "Credentials": "Hitelesítő adatok",

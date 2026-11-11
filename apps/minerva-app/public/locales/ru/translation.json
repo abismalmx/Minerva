@@ -1384,7 +1384,7 @@
   "Data Sync": "Синхронизация данных",
   "Manage Fonts": "Управление шрифтами",
   "App settings": "Настройки приложения",
-  "Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)": "Тема, цвета выделений и интеграции (KOSync, Readwise, Hardcover)",
+  "Theme, highlight colours, and integrations (Readwise, Hardcover)": "Тема, цвета выделений и интеграции (Readwise, Hardcover)",
   "Required while Dictionaries sync is enabled": "Требуется, пока включена синхронизация Словарей",
   "Pick a 4-digit PIN. You will need to enter it every time you open Minerva. There is no way to recover a forgotten PIN. Clearing the app data is the only way to reset it.": "Выберите 4-значный PIN-код. Вам нужно будет вводить его каждый раз при открытии Minerva. Восстановить забытый PIN-код невозможно. Очистка данных приложения — единственный способ его сбросить.",
   "Credentials": "Учётные данные",

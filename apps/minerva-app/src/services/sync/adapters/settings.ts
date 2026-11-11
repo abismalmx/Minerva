@@ -58,12 +58,6 @@ export const SETTINGS_WHITELIST = [
   // External integrations. Server URL + identifiers sync as plaintext;
   // the credential fields are listed in `encryptedFields` below so the
   // publish/pull middleware wraps them in cipher envelopes.
-  'kosync.serverUrl',
-  'kosync.username',
-  'kosync.userkey',
-  'kosync.password',
-  'kosync.customHeaders',
-  'kosync.allowSelfSignedCert',
   'bookorbit.serverUrl',
   'bookorbit.username',
   'bookorbit.userkey',
@@ -142,10 +136,6 @@ export const SETTINGS_DICTIONARY_FIELDS = [
  * unlock; the rest of the bundled settings keep syncing quietly.
  */
 export const SETTINGS_ENCRYPTED_FIELDS = [
-  'kosync.username',
-  'kosync.userkey',
-  'kosync.password',
-  'kosync.customHeaders',
   'bookorbit.username',
   'bookorbit.userkey',
   'bookorbit.password',
@@ -169,7 +159,7 @@ export type SettingsWhitelistKey = (typeof SETTINGS_WHITELIST)[number];
  * to/from a JSON string at this boundary so the crypto middleware only
  * ever sees a string.
  */
-const OBJECT_VALUED_ENCRYPTED_PATHS = ['kosync.customHeaders', 'bookorbit.customHeaders'] as const;
+const OBJECT_VALUED_ENCRYPTED_PATHS = ['bookorbit.customHeaders'] as const;
 
 // In practice every path comes from the compile-time SETTINGS_WHITELIST so
 // these never appear, but readPath/writePath are exported helpers and the

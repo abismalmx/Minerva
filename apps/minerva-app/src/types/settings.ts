@@ -586,7 +586,6 @@ export interface SystemSettings {
    */
   biometricUnlockEnabled?: boolean;
 
-  kosync: KOSyncSettings;
   bookorbit: BookOrbitSettings;
   readwise: ReadwiseSettings;
   hardcover: HardcoverSettings;

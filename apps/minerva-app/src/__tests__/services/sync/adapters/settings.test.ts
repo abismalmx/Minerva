@@ -83,11 +83,11 @@ describe('settingsAdapter', () => {
     const record: SettingsRemoteRecord = {
       name: 'singleton',
       patch: {
-        kosync: { serverUrl: 'https://kosync.example' },
+        bookorbit: { serverUrl: 'https://books.example' },
       } as Partial<SystemSettings>,
     };
     const fields = settingsAdapter.pack(record);
-    expect(fields['kosync.serverUrl']).toBe('https://kosync.example');
+    expect(fields['bookorbit.serverUrl']).toBe('https://books.example');
   });
 
   test('pack/unpack round-trips Notion connection fields and drops local sync state', () => {
@@ -206,54 +206,6 @@ describe('settingsAdapter', () => {
     expect(out.patch.s3?.enabled).toBeUndefined();
   });
 
-  test('pack ∘ unpack round-trips kosync.customHeaders, serialized to a JSON string across the boundary', () => {
-    // encryptPackedFields / decryptRowFields only handle string-valued
-    // fields (String(value) on encrypt, a decrypted string back on
-    // decrypt) — every other entry in SETTINGS_ENCRYPTED_FIELDS is a
-    // plain string. customHeaders is the first object-valued encrypted
-    // field, so pack must serialize it to JSON before it reaches the
-    // crypto middleware, and unpack must parse it back.
-    const record: SettingsRemoteRecord = {
-      name: 'singleton',
-      patch: {
-        kosync: {
-          customHeaders: { 'CF-Access-Client-Id': 'client-id' },
-        },
-      } as unknown as Partial<SystemSettings>,
-    };
-    const fields = settingsAdapter.pack(record);
-    expect(fields['kosync.customHeaders']).toBe(
-      JSON.stringify({ 'CF-Access-Client-Id': 'client-id' }),
-    );
-
-    const out = settingsAdapter.unpack(fields);
-    expect(out.patch.kosync?.customHeaders).toEqual({ 'CF-Access-Client-Id': 'client-id' });
-  });
-
-  test('unpackRow parses kosync.customHeaders back from its JSON string envelope', () => {
-    const row = makeRow({
-      'kosync.customHeaders': env(JSON.stringify({ 'CF-Access-Client-Id': 'client-id' })),
-    });
-    const out = settingsAdapter.unpackRow(row, '');
-    expect(out).not.toBeNull();
-    expect(out!.patch.kosync?.customHeaders).toEqual({ 'CF-Access-Client-Id': 'client-id' });
-  });
-
-  test('pack drops empty/blank kosync.customHeaders instead of shipping an empty object', () => {
-    const record: SettingsRemoteRecord = {
-      name: 'singleton',
-      patch: {
-        kosync: { customHeaders: {} },
-      } as unknown as Partial<SystemSettings>,
-    };
-    const fields = settingsAdapter.pack(record);
-    expect(fields['kosync.customHeaders']).toBeUndefined();
-  });
-
-  test('kosync.customHeaders is encrypted, like the other kosync credential fields', () => {
-    expect(settingsAdapter.encryptedFields).toContain('kosync.customHeaders');
-  });
-
   test('pack ∘ unpack round-trips bookorbit.customHeaders, serialized to a JSON string across the boundary', () => {
     const record: SettingsRemoteRecord = {
       name: 'singleton',
@@ -296,12 +248,8 @@ describe('settingsAdapter', () => {
     expect(settingsAdapter.encryptedFields).toContain('bookorbit.customHeaders');
   });
 
-  test('declares encryptedFields covering kosync / bookorbit / readwise / hardcover / webdav / s3 credentials only (not serverUrl / endpoint)', () => {
+  test('declares encryptedFields covering bookorbit / readwise / hardcover / webdav / s3 credentials only (not serverUrl / endpoint)', () => {
     expect(settingsAdapter.encryptedFields).toEqual([
-      'kosync.username',
-      'kosync.userkey',
-      'kosync.password',
-      'kosync.customHeaders',
       'bookorbit.username',
       'bookorbit.userkey',
       'bookorbit.password',
@@ -316,8 +264,8 @@ describe('settingsAdapter', () => {
     ]);
   });
 
-  test('kosync.serverUrl is plaintext (not in encryptedFields)', () => {
-    expect(settingsAdapter.encryptedFields).not.toContain('kosync.serverUrl');
+  test('bookorbit.serverUrl is plaintext (not in encryptedFields)', () => {
+    expect(settingsAdapter.encryptedFields).not.toContain('bookorbit.serverUrl');
   });
 
   test('webdav.serverUrl and webdav.rootPath are plaintext (not in encryptedFields)', () => {
@@ -335,13 +283,13 @@ describe('settingsAdapter', () => {
     const userColors = [{ name: 'mint', color: '#a8e6cf' }];
     const row = makeRow({
       'globalReadSettings.userHighlightColors': env(userColors),
-      'kosync.serverUrl': env('https://kosync.example'),
+      'bookorbit.serverUrl': env('https://books.example'),
     });
     const out = settingsAdapter.unpackRow(row, '');
     expect(out).not.toBeNull();
     expect(out!.name).toBe('singleton');
     expect(out!.patch.globalReadSettings?.userHighlightColors).toEqual(userColors);
-    expect(out!.patch.kosync?.serverUrl).toBe('https://kosync.example');
+    expect(out!.patch.bookorbit?.serverUrl).toBe('https://books.example');
   });
 
   test('unpackRow returns null when the row carries no whitelisted fields', () => {

@@ -228,7 +228,6 @@ const FoliateViewer: React.FC<{
   useABSProgressSync(bookKey);
   useProgressAutoSave(bookKey);
   useBookCoverAutoSave(bookKey);
-  const { syncState, conflictDetails, resolveWithLocal, resolveWithRemote } = useKOSync(bookKey);
   const bookOrbitSync = useKOSync(bookKey, bookOrbitProgressProvider);
   useFileSync(bookKey);
   useTextTranslation(bookKey, viewRef.current);
@@ -1442,14 +1441,6 @@ const FoliateViewer: React.FC<{
         <div className='absolute left-0 top-0 z-10 flex h-full w-full items-center justify-center'>
           <Spinner loading={true} />
         </div>
-      )}
-      {syncState === 'conflict' && conflictDetails && (
-        <KOSyncConflictResolver
-          details={conflictDetails}
-          onResolveWithLocal={resolveWithLocal}
-          onResolveWithRemote={resolveWithRemote}
-          onClose={resolveWithLocal}
-        />
       )}
       {bookOrbitSync.syncState === 'conflict' && bookOrbitSync.conflictDetails && (
         <KOSyncConflictResolver

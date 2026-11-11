@@ -37,7 +37,6 @@ beforeEach(() => {
   disk.settings = {
     ...structuredClone(DEFAULT_SYSTEM_SETTINGS),
     replicaDeviceId: 'device',
-    kosync: { ...DEFAULT_SYSTEM_SETTINGS.kosync!, deviceId: 'kosync' },
     bookorbit: { ...DEFAULT_SYSTEM_SETTINGS.bookorbit!, deviceId: 'bookorbit' },
   };
 });

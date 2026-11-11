@@ -69,7 +69,7 @@ const useCategoryCopy = (): Record<SyncCategory, CategoryCopy> => {
       // Dictionary preferences ride this row too, but they're gated by the
       // Dictionaries toggle above, so they're deliberately not listed here.
       title: _('App settings'),
-      description: _('Theme, highlight colours, and integrations (KOSync, Readwise, Hardcover)'),
+      description: _('Theme, highlight colours, and integrations (Readwise, Hardcover)'),
     },
     credentials: {
       title: _('Credentials'),
@@ -102,7 +102,7 @@ export function SyncCategoriesSection() {
   const enabled = (category: SyncCategory): boolean => {
     const value = settings.syncCategories?.[category];
     // 'credentials' is the only category that defaults OFF — sync of
-    // sensitive fields (OPDS / KOSync / Readwise / Hardcover tokens) is
+    // sensitive fields (OPDS / Readwise / Hardcover tokens) is
     // explicit opt-in. Every other category defaults ON when unset.
     if (category === 'credentials') return value === true;
     return value !== false;

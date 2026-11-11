@@ -74,16 +74,19 @@ function makeSettings(overrides: Partial<SystemSettings> = {}): SystemSettings {
         updatedAt: 1,
       },
     ],
-    kosync: {
+    bookorbit: {
       enabled: true,
-      serverUrl: 'https://kosync.example',
+      serverUrl: 'https://books.example',
       username: 'kuser',
       userkey: 'kkey',
       password: 'kpass',
-      deviceId: 'kosync-device-id',
+      deviceId: 'bookorbit-device-id',
       deviceName: 'My Phone',
-      checksumMethod: 'binary',
       strategy: 'prompt',
+      syncProgress: true,
+      syncNotes: true,
+      syncStats: true,
+      syncBookStates: true,
     },
     webdav: {
       enabled: true,
@@ -165,7 +168,7 @@ describe('sanitizeSettingsForBackup - blacklist', () => {
   it('strips per-device identity fields', () => {
     const out = rec(sanitizeSettingsForBackup(makeSettings()));
     expect(out['replicaDeviceId']).toBeUndefined();
-    expect(rec(out['kosync'])['deviceId']).toBeUndefined();
+    expect(rec(out['bookorbit'])['deviceId']).toBeUndefined();
     expect(rec(out['googleDrive'])['deviceId']).toBeUndefined();
     // Non-identity Drive settings still travel with the backup.
     expect(rec(out['googleDrive'])['enabled']).toBe(true);
@@ -219,8 +222,8 @@ describe('sanitizeSettingsForBackup - blacklist', () => {
     expect(out.keepLogin).toBe(true);
     expect(out.libraryViewMode).toBe('grid');
     expect(out.libraryColumns).toBe(4);
-    expect(out.kosync.serverUrl).toBe('https://kosync.example');
-    expect(out.kosync.deviceName).toBe('My Phone');
+    expect(out.bookorbit.serverUrl).toBe('https://books.example');
+    expect(out.bookorbit.deviceName).toBe('My Phone');
     expect(out.globalReadSettings.customThemes).toEqual([{ name: 'mytheme' }]);
     expect(out.globalViewSettings.userStylesheet).toBe('body { color: red }');
   });
@@ -246,9 +249,9 @@ describe('sanitizeSettingsForBackup - blacklist', () => {
 describe('sanitizeSettingsForBackup - credentials', () => {
   it('strips credentials by default', () => {
     const out = sanitizeSettingsForBackup(makeSettings());
-    expect(rec(out.kosync)['username']).toBeUndefined();
-    expect(rec(out.kosync)['userkey']).toBeUndefined();
-    expect(rec(out.kosync)['password']).toBeUndefined();
+    expect(rec(out.bookorbit)['username']).toBeUndefined();
+    expect(rec(out.bookorbit)['userkey']).toBeUndefined();
+    expect(rec(out.bookorbit)['password']).toBeUndefined();
     expect(rec(out.readwise)['accessToken']).toBeUndefined();
     expect(rec(out.hardcover)['accessToken']).toBeUndefined();
     expect(rec(out.notion)['accessToken']).toBeUndefined();
@@ -272,7 +275,7 @@ describe('sanitizeSettingsForBackup - credentials', () => {
 
   it('keeps credentials when includeCredentials is true', () => {
     const out = sanitizeSettingsForBackup(makeSettings(), { includeCredentials: true });
-    expect(out.kosync.password).toBe('kpass');
+    expect(out.bookorbit.password).toBe('kpass');
     expect(out.readwise.accessToken).toBe('rw-token');
     expect(out.hardcover.accessToken).toBe('hc-token');
     expect(out.notion.accessToken).toBe('notion-token');
@@ -323,24 +326,27 @@ describe('mergeRestoredSettings', () => {
     const current = makeSettings();
     const backup = sanitizeSettingsForBackup(
       makeSettings({
-        kosync: {
+        bookorbit: {
           enabled: true,
-          serverUrl: 'https://new-kosync.example',
+          serverUrl: 'https://new-books.example',
           username: 'kuser',
           userkey: 'kkey',
           password: 'kpass',
-          deviceId: 'kosync-device-id',
+          deviceId: 'bookorbit-device-id',
           deviceName: 'Restored Name',
-          checksumMethod: 'binary',
           strategy: 'prompt',
+          syncProgress: true,
+          syncNotes: true,
+          syncStats: true,
+          syncBookStates: true,
         },
       }),
     );
     const merged = mergeRestoredSettings(current, backup);
     // serverUrl/deviceName come from the backup, deviceId stays the device's own
-    expect(merged.kosync.serverUrl).toBe('https://new-kosync.example');
-    expect(merged.kosync.deviceName).toBe('Restored Name');
-    expect(merged.kosync.deviceId).toBe('kosync-device-id');
+    expect(merged.bookorbit.serverUrl).toBe('https://new-books.example');
+    expect(merged.bookorbit.deviceName).toBe('Restored Name');
+    expect(merged.bookorbit.deviceId).toBe('bookorbit-device-id');
   });
 
   it('replaces arrays wholesale rather than concatenating', () => {

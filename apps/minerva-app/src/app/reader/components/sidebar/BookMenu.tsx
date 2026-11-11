@@ -115,13 +115,11 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
     setProofreadRulesVisibility(true);
     setIsDropdownOpen?.(false);
   };
-  // `provider` addresses one sync backend: KOSync and BookOrbit speak the same
-  // protocol through the same hook and would otherwise both answer.
-  const handlePullKOSync = (provider: 'kosync' | 'bookorbit') => () => {
+  const handlePullKOSync = (provider: 'bookorbit') => () => {
     eventDispatcher.dispatch('pull-kosync', { bookKey: sideBarBookKey, provider });
     setIsDropdownOpen?.(false);
   };
-  const handlePushKOSync = (provider: 'kosync' | 'bookorbit') => () => {
+  const handlePushKOSync = (provider: 'bookorbit') => () => {
     eventDispatcher.dispatch('push-kosync', { bookKey: sideBarBookKey, provider });
     setIsDropdownOpen?.(false);
   };
@@ -214,21 +212,12 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
         ) : (
           <MenuItem label={_('Enter Parallel Read')} onClick={handleSetParallel} />
         ))}
-      {(settings.kosync.enabled ||
-        bookOrbitProgressSync ||
+      {(bookOrbitProgressSync ||
         settings.readwise.enabled ||
         settings.hardcover.enabled ||
         pageboundEnabled ||
         (settings.notion.enabled && settings.notion.accessToken && settings.notion.databaseId)) && (
         <hr aria-hidden='true' className='border-base-200 my-1' />
-      )}
-      {settings.kosync.enabled && (
-        <MenuItem label={_('KOReader Sync')} detailsOpen={false} buttonClass='py-2'>
-          <ul className='flex flex-col ps-1'>
-            <MenuItem label={_('Push Progress')} noIcon onClick={handlePushKOSync('kosync')} />
-            <MenuItem label={_('Pull Progress')} noIcon onClick={handlePullKOSync('kosync')} />
-          </ul>
-        </MenuItem>
       )}
       {bookOrbitProgressSync && (
         <MenuItem label={_('BookOrbit Sync')} detailsOpen={false} buttonClass='py-2'>
