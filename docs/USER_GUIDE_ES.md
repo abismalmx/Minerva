@@ -123,6 +123,7 @@ bibliotecas completas.
 | `Minerva-1.0.5.exe` | Windows x64 (portátil) | 95 532 324 B |
 | `Minerva-1.0.5-windows-x86_64.zip` | Windows x64 (portátil, comprimido) | 50 225 191 B |
 | `Minerva-1.0.5.apk` | Android (arm64-v8a) | 57 597 296 B |
+| `Minerva-1.0.5-arm64-clean.apk` | Android (arm64-v8a) — el mismo APK bajo el nombre de entrega | 57 597 296 B |
 
 SHA-256:
 
@@ -131,6 +132,7 @@ SHA-256:
 9e7534e6d277af78e728aaea374f7ace408410c99f1c5c114d133923881b6c2b  Minerva-1.0.5.exe
 8674c297b80afbe16198dbc4485c589c251dbc16bb0a15e64b6136c0bb5e3156  Minerva-1.0.5-windows-x86_64.zip
 396bd5bb903bccfcdfda1bd9c8e93052e462495fd80e1f788345478a5b4a9e99  Minerva-1.0.5.apk
+396bd5bb903bccfcdfda1bd9c8e93052e462495fd80e1f788345478a5b4a9e99  Minerva-1.0.5-arm64-clean.apk
 ```
 
 El APK está firmado con la **clave de depuración de Android** (esquemas de
