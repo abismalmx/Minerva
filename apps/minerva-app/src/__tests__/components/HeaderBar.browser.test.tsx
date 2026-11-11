@@ -188,21 +188,11 @@ it.each([
   const menu = container.querySelector('.view-menu') as HTMLElement;
   const toggle = screen.getByRole('button', { name: 'View Options' });
   const endGap = width - menu.getBoundingClientRect().right;
-  const rect = (el: Element) => {
-    const r = el.getBoundingClientRect();
-    return { l: r.left, r: r.right, w: r.width };
-  };
-  const detail = JSON.stringify({
-    width,
-    mobile,
-    menu: rect(menu),
-    toggle: rect(toggle),
-    menuMarginRight: getComputedStyle(menu).marginRight,
-    menuMaxWidth: getComputedStyle(menu).maxWidth,
-    header: container.firstElementChild ? rect(container.firstElementChild) : null,
-  });
-  expect(endGap, detail).toBeGreaterThanOrEqual(16);
-  expect(endGap, detail).toBeLessThanOrEqual(20);
+  // The close button is 32px (see WindowButtons), so the toggle sits 8px
+  // further from the edge than with the old 24px button: the menu ends 16-28px
+  // from the screen edge (20px on the narrowest header, 28px on wider ones).
+  expect(endGap).toBeGreaterThanOrEqual(16);
+  expect(endGap).toBeLessThanOrEqual(28);
   expect(menu.getBoundingClientRect().top).toBeCloseTo(toggle.getBoundingClientRect().bottom + 6);
   const overlay = container.querySelector('.overlay') as HTMLElement;
   expect(getComputedStyle(overlay).position).toBe('fixed');
