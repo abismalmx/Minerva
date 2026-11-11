@@ -34,9 +34,9 @@ credits the reporter by the public name they posted under (`Reported by
 an email or account id. When a commit answers
 the maintainer's feedback, its subject quotes it: `fix(reader): ... (owner: <their words>)`.
 
-## Moved from LESSONS.md
+## Review rules
 
-Lessons seen on 3 or more days, checked on every review.
+Rules checked on every review.
 
 | Rule | What a reviewer looks at |
 | --- | --- |

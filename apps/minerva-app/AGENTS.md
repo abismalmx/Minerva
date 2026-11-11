@@ -73,27 +73,12 @@ pnpm worktree:new 3837              # Checkout PR #3837 with push access to fork
 
 Project-related agent context lives under `.agents/`, which is a symlink to `.claude/`. Treat `.agents/` as the canonical path when looking for or updating local agent material:
 
-- `.agents/memory/` — persistent project memory and recurring context
 - `.agents/plans/` — active or archived implementation plans
 - `.agents/rules/` — project rules for test-first work, TypeScript, verification, and related workflows
 
 ## Project Rules
 
 Rules are in `.agents/rules/`: test-first, typescript, verification, acceptance.
-
-### Lessons
-
-Before changing code, read LESSONS.md: what recent merged work got wrong and the rule that would have caught it. The `nightly-review` loop keeps it current; a lesson seen on 3 days moves into `.agents/rules/acceptance.md`.
-
-@LESSONS.md
-
-### Community PRs
-
-Before reviewing a community PR, read [docs/contributors.md](docs/contributors.md): what stops a review for possible harm, what is closed unreviewed, and who is blocked or watched.
-
-### Maintenance loops
-
-Three loops run in parallel, each in its own session: `/loop /triage-github` (issues and PRs), `/loop /watch-social` (X, Discord, Reddit) and `/loop /nightly-review` (lessons, cleanup, author blocks). The maintainer reviews UI/UX and product decisions.
 
 ### Implementation Scope
 

@@ -2218,8 +2218,6 @@ nix build -L
 1. **Lee [`SECURITY.md`](../SECURITY.md).**
 2. **Abre una issue** si el cambio es una opinión sobre el producto o una funcionalidad nueva. La política del proyecto es explícita: *«If you want to make code changes based on your personal opinion(s), make sure you open an issue first describing the changes you want to make, and open a pull request only when your suggestions get approved by maintainers.»*
 3. **Busca en el rastreador de issues** si ya hay una propuesta o un fix conocido.
-4. **Lee [`apps/minerva-app/docs/contributors.md`](../apps/minerva-app/docs/contributors.md)** antes de revisar un PR de la comunidad: qué detiene una revisión por posible daño, qué se cierra sin revisar y quién está bloqueado o vigilado.
-5. **Lee [`apps/minerva-app/LESSONS.md`](../apps/minerva-app/LESSONS.md)**: qué se hizo mal en el trabajo fusionado recientemente y qué regla lo habría atrapado.
 
 ### 8.2 Ramas y commits
 
@@ -2455,14 +2453,12 @@ find apps/minerva-app/out/_next/static -name '*.js.map' | wc -l   # → 0
 | [`apps/minerva-app/docs/code-layout.md`](../apps/minerva-app/docs/code-layout.md) | Desglose de directorios |
 | [`apps/minerva-app/docs/testing.md`](../apps/minerva-app/docs/testing.md) | Las cinco capas de test |
 | [`apps/minerva-app/docs/i18n.md`](../apps/minerva-app/docs/i18n.md) | El esquema *key-as-content* y el flujo de extracción |
-| [`apps/minerva-app/docs/contributors.md`](../apps/minerva-app/docs/contributors.md) | Revisión de PRs de la comunidad |
 | [`apps/minerva-app/docs/read-along-narration.md`](../apps/minerva-app/docs/read-along-narration.md) | Narración y Media Overlays |
 | [`apps/minerva-app/docs/safe-area-insets.md`](../apps/minerva-app/docs/safe-area-insets.md) | Reglas de insets en pantallas con muesca |
 | [`apps/minerva-app/docs/stats-archive.md`](../apps/minerva-app/docs/stats-archive.md) | Archivo de estadísticas de lectura |
 | [`apps/minerva-app/docs/view-settings.md`](../apps/minerva-app/docs/view-settings.md) | Ajustes de vista del lector |
 | [`apps/minerva-app/docs/book-config.md`](../apps/minerva-app/docs/book-config.md) | Configuración por libro |
 | [`apps/minerva-app/DESIGN.md`](../apps/minerva-app/DESIGN.md) | Sistema de diseño: superficies, vocabulario de acciones, primitivas, e-ink |
-| [`apps/minerva-app/LESSONS.md`](../apps/minerva-app/LESSONS.md) | Errores recientes y la regla que los habría atrapado |
 | [`apps/minerva-app/AGENTS.md`](../apps/minerva-app/AGENTS.md) | Contexto de trabajo para asistentes de código |
 | [`apps/minerva-app/workers/minerva-sync/README.md`](../apps/minerva-app/workers/minerva-sync/README.md) | Documentación del backend autoalojable |
 | `docs/DEPLOYMENT.md` | Runbook de despliegue, verificación, mantenimiento y rollback |
