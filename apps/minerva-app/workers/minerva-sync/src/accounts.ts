@@ -68,8 +68,10 @@ export const normalizeEmail = (email: string): string => email.trim().toLowerCas
  */
 export const MIN_PASSPHRASE_LENGTH = 8;
 
+// The length cap goes first: the pattern backtracks quadratically on a long
+// run of dots, so it must never see an oversized, attacker-sized string.
 export const isValidEmail = (email: string): boolean =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+  email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export const isValidUsername = (username: string): boolean =>
   /^[A-Za-z0-9._-]{3,64}$/.test(username);

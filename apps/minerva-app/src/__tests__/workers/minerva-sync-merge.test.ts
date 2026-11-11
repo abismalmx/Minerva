@@ -210,6 +210,15 @@ describe('email validation', () => {
     expect(isValidEmail('no-at-sign')).toBe(false);
     expect(isValidEmail('a b@example.com')).toBe(false);
   });
+
+  // The pattern backtracks quadratically on a long run of dots; the length cap
+  // must be checked before it runs, not after, so a hostile request cannot pin
+  // the Worker's CPU.
+  it('rejects an oversized address without running the pattern on it', () => {
+    const start = performance.now();
+    expect(isValidEmail(`a@${'.'.repeat(40_000)} `)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(100);
+  });
 });
 
 describe('JSON column serialization', () => {
