@@ -95,11 +95,10 @@ export async function createOrUpdateSubscription(userId: string, purchase: Verif
       throw new Error(`Database update failed: ${error.message}`);
     }
 
-    // Resolved across every provider, not just this one: a Stripe or
-    // other-store subscription the user still pays for must keep its
-    // entitlement instead of being cancelled out by this write. This purchase's
-    // own entitlement is passed in rather than read back, because the row above
-    // stores a grace period as `expired`.
+    // Resolved across every provider, not just this one: a subscription the
+    // user still pays for must keep its entitlement instead of being cancelled
+    // out by this write. This purchase's own entitlement is passed in rather
+    // than read back, because the row above stores a grace period as `expired`.
     const plan = await resolveUserPlan(userId, {
       entitledPlan: isEntitledStatus(purchase.status)
         ? mapProductIdToUserPlan(purchase.productId, true)

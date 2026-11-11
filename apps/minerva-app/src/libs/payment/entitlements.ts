@@ -59,48 +59,16 @@ export const getHighestActiveIapPlan = async (userId: string): Promise<UserPlan>
   return plan;
 };
 
-/** Highest plan still entitled by an active (or trialing) Stripe subscription. */
-export const getHighestActiveStripePlan = async (
-  userId: string,
-  stripeCustomerId?: string,
-): Promise<UserPlan> => {
-  let customerId = stripeCustomerId;
-  if (!customerId) {
-    const supabase = createSupabaseAdminClient();
-    // `maybeSingle`, so that "this user has no Stripe customer" comes back as a
-    // null row rather than as an error the way `single` reports it — otherwise
-    // the two are indistinguishable here. And as with the IAP reads above, a
-    // failed lookup must never be mistaken for "no Stripe subscription": that
-    // would persist a downgrade for a user who is still paying by card.
-    const { data, error } = await supabase
-      .from('customers')
-      .select('stripe_customer_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (error) throw error;
-    customerId = data?.stripe_customer_id;
-  }
-  if (!customerId) return 'free';
-
-  // Imported lazily so the IAP handlers don't pull the Stripe SDK in at module
-  // load, and so this module and `stripe/server` can reference each other.
-  const { getStripe, getHighestActivePlan } = await import('./stripe/server');
-  return getHighestActivePlan(getStripe(), customerId);
-};
-
 /**
  * The highest plan the user is entitled to across EVERY billing provider.
  *
  * Every writer of `plans.plan` must go through this. Resolving the plan from a
- * single provider is what let a Stripe cancellation wipe the plan of a user who
- * had moved to Google Play, and let a store expiry wipe the plan of a user who
- * had moved the other way.
+ * single provider is what let one store's cancellation wipe the plan of a user
+ * who had moved to the other one.
  */
 export const resolveUserPlan = async (
   userId: string,
   options: {
-    /** Known Stripe customer, to skip the `customers` lookup. */
-    stripeCustomerId?: string;
     /**
      * A plan the caller already knows the user is entitled to from the event it
      * is processing. Needed because the IAP tables cannot express a billing
@@ -109,9 +77,6 @@ export const resolveUserPlan = async (
     entitledPlan?: UserPlan;
   } = {},
 ): Promise<UserPlan> => {
-  const [stripePlan, iapPlan] = await Promise.all([
-    getHighestActiveStripePlan(userId, options.stripeCustomerId),
-    getHighestActiveIapPlan(userId),
-  ]);
-  return higherPlan(higherPlan(stripePlan, iapPlan), options.entitledPlan ?? 'free');
+  const iapPlan = await getHighestActiveIapPlan(userId);
+  return higherPlan(iapPlan, options.entitledPlan ?? 'free');
 };

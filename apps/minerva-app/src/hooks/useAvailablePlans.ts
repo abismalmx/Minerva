@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { fetchAndTransformIAPPlans, isIAPAvailable } from '@/libs/payment/iap/client';
-import { fetchStripePlans } from '@/libs/payment/stripe/client';
 import { AvailablePlan } from '@/types/quota';
 import { stubTranslation as _ } from '@/utils/misc';
 
@@ -37,14 +36,11 @@ export const useAvailablePlans = ({ hasIAP, onError }: UseAvailablePlansParams) 
           const plans = await fetchAndTransformIAPPlans(IAP_PRODUCT_IDS);
           setAvailablePlans(plans);
           setIapAvailable(true);
-        } else {
-          const plans = await fetchStripePlans();
-          setAvailablePlans(plans);
         }
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Unknown error');
         setError(error);
-        console.error(`Failed to fetch ${hasIAP ? 'IAP' : 'Stripe'} plans:`, error);
+        console.error('Failed to fetch IAP plans:', error);
 
         if (onError) {
           onError(_('Failed to load subscription plans.'));

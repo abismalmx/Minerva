@@ -12,11 +12,9 @@ import { useQuotaStats } from '@/hooks/useQuotaStats';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUserActions } from '@/hooks/useUserActions';
 import { useAvailablePlans } from '@/hooks/useAvailablePlans';
-import type { PlanType } from '@/types/quota';
 import { navigateBackFromProfile } from '@/utils/nav';
 import { eventDispatcher } from '@/utils/event';
-import { isTauriAppPlatform } from '@/services/environment';
-import { getPlanDetails, shouldUseBillingPortal } from './utils/plan';
+import { getPlanDetails } from './utils/plan';
 import { isSelfHosted } from '@/utils/access';
 import { Toast } from '@/components/Toast';
 import {
@@ -27,16 +25,6 @@ import {
   getSubscriptionSuccessUrl as getIAPSubscriptionSuccessUrl,
 } from '@/libs/payment/iap/client';
 import { isPurchaseProduct } from '@/libs/payment/iap/utils';
-import {
-  createStripeCheckoutSession,
-  redirectToStripeCheckout,
-  createStripePortalSession,
-  redirectToStripePortal,
-  handleStripeCheckoutError,
-  getSubscriptionSuccessUrl as getStripeSubscriptionSuccessUrl,
-  type StripeAvailablePlan,
-  type StripePortalFlow,
-} from '@/libs/payment/stripe/client';
 import LegalLinks from '@/components/LegalLinks';
 import Spinner from '@/components/Spinner';
 import ProfileHeader from './components/Header';
@@ -48,13 +36,6 @@ import StorageManager from './components/StorageManager';
 import SharedLinksSection from './components/SharedLinksSection';
 import { SyncPassphraseSection } from './components/SyncPassphraseSection';
 import { SyncCategoriesSection } from './components/SyncCategoriesSection';
-import Checkout from './components/Checkout';
-
-type CheckoutState = {
-  clientSecret: string;
-  sessionId: string;
-  planName: string;
-};
 
 const ProfilePage = () => {
   const _ = useTranslation();
@@ -64,18 +45,12 @@ const ProfilePage = () => {
   const { safeAreaInsets, isRoundedWindow } = useThemeStore();
 
   const [loading, setLoading] = useState(false);
-  const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
   const [showStorageManager, setShowStorageManager] = useState(false);
   const [showSharedLinksManager, setShowSharedLinksManager] = useState(false);
   const searchParams = useSearchParams();
   const [showSyncManager, setShowSyncManager] = useState(
     () => searchParams?.get('section') === 'sync',
   );
-  const [checkoutState, setCheckoutState] = useState<CheckoutState>({
-    clientSecret: '',
-    sessionId: '',
-    planName: '',
-  });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -119,9 +94,7 @@ const ProfilePage = () => {
   });
 
   const handleGoBack = () => {
-    if (showEmbeddedCheckout) {
-      setShowEmbeddedCheckout(false);
-    } else if (showStorageManager) {
+    if (showStorageManager) {
       setShowStorageManager(false);
       refresh();
     } else if (showSharedLinksManager) {
@@ -132,64 +105,6 @@ const ProfilePage = () => {
       navigateBackFromProfile(router, searchParams?.get('redirect'));
     }
   };
-
-  const handleStripeSubscribe = async (productId?: string, planType: PlanType = 'subscription') => {
-    if (!productId) return;
-
-    // Someone who already holds a subscription changes plan or billing period
-    // in the billing portal. Opening a second checkout session would leave the
-    // old subscription running alongside the new one and bill them twice.
-    if (shouldUseBillingPortal(userProfilePlan, planType)) {
-      await openStripePortal('subscription_update');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { sessionId, clientSecret, url } = await createStripeCheckoutSession(
-        productId,
-        planType,
-      );
-
-      const foundPlan = availablePlans.find((plan) => plan.productId === productId);
-
-      if (!foundPlan) {
-        throw new Error(`Plan not found for product ID: ${productId}`);
-      }
-
-      const selectedPlan = foundPlan as StripeAvailablePlan;
-      const planName = selectedPlan.product?.name || selectedPlan.productName;
-
-      const isEmbeddedCheckout = isTauriAppPlatform();
-      if (isEmbeddedCheckout && sessionId && clientSecret) {
-        setShowEmbeddedCheckout(true);
-        setCheckoutState({
-          planName,
-          clientSecret,
-          sessionId,
-        });
-      } else {
-        await redirectToStripeCheckout(url);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      handleStripeCheckoutError(errorMessage);
-      eventDispatcher.dispatch('toast', {
-        type: 'info',
-        message: _('Failed to create checkout session'),
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCheckoutSuccess = useCallback(
-    (sessionId: string) => {
-      setShowEmbeddedCheckout(false);
-      router.push(getStripeSubscriptionSuccessUrl(sessionId));
-    },
-    [router],
-  );
 
   const handleIAPSubscribe = async (productId?: string) => {
     if (!productId) return;
@@ -249,24 +164,6 @@ const ProfilePage = () => {
     }
     setLoading(false);
   };
-
-  const openStripePortal = async (flow?: StripePortalFlow) => {
-    setLoading(true);
-    try {
-      const url = await createStripePortalSession(flow);
-      await redirectToStripePortal(url);
-    } catch (error) {
-      console.error('Error creating portal session:', error);
-      eventDispatcher.dispatch('toast', {
-        type: 'info',
-        message: _('Failed to manage subscription.'),
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManageSubscription = () => openStripePortal();
 
   const handleDeleteWithMessage = () => {
     handleConfirmDelete(_('Failed to delete user. Please try again later.'));
@@ -336,84 +233,67 @@ const ProfilePage = () => {
               <Spinner loading className='text-gray-900' />
             </div>
           )}
-          {showEmbeddedCheckout ? (
-            <div className='bg-base-100 rounded-lg p-4'>
-              <Checkout
-                clientSecret={checkoutState.clientSecret}
-                sessionId={checkoutState.sessionId}
-                planName={checkoutState.planName}
-                onSuccess={handleCheckoutSuccess}
-              />
-            </div>
-          ) : (
-            <div className='sm:bg-base-200 overflow-hidden rounded-lg sm:p-6 sm:shadow-md'>
-              <div className='flex flex-col gap-y-8'>
+          <div className='sm:bg-base-200 overflow-hidden rounded-lg sm:p-6 sm:shadow-md'>
+            <div className='flex flex-col gap-y-8'>
+              <div className='flex flex-col gap-y-8 px-6'>
+                <UserInfo
+                  avatarUrl={avatarUrl}
+                  userFullName={userFullName}
+                  userEmail={userEmail}
+                  planDetails={userPlanDetails}
+                />
+
+                {!isSelfHosted() &&
+                  !showStorageManager &&
+                  !showSharedLinksManager &&
+                  !showSyncManager && <UsageStats quotas={quotas} />}
+              </div>
+
+              {showStorageManager ? (
                 <div className='flex flex-col gap-y-8 px-6'>
-                  <UserInfo
-                    avatarUrl={avatarUrl}
-                    userFullName={userFullName}
-                    userEmail={userEmail}
-                    planDetails={userPlanDetails}
-                  />
-
-                  {!isSelfHosted() &&
-                    !showStorageManager &&
-                    !showSharedLinksManager &&
-                    !showSyncManager && <UsageStats quotas={quotas} />}
+                  <StorageManager />
                 </div>
-
-                {showStorageManager ? (
-                  <div className='flex flex-col gap-y-8 px-6'>
-                    <StorageManager />
-                  </div>
-                ) : showSharedLinksManager ? (
-                  <div className='flex flex-col gap-y-8 px-6'>
-                    <SharedLinksSection />
-                  </div>
-                ) : showSyncManager ? (
-                  <div className='flex flex-col gap-y-8 px-6'>
-                    <SyncCategoriesSection />
-                    <SyncPassphraseSection />
-                  </div>
-                ) : (
-                  <>
-                    {!isSelfHosted() && (
-                      <div className='flex flex-col gap-y-8 px-2 sm:px-6'>
-                        <PlansComparison
-                          availablePlans={availablePlans}
-                          userPlan={userProfilePlan}
-                          customizationPurchased={customizationPurchased}
-                          onSubscribe={
-                            appService.hasIAP && iapAvailable
-                              ? handleIAPSubscribe
-                              : handleStripeSubscribe
-                          }
-                        />
-                      </div>
-                    )}
-                    <div className='flex flex-col gap-y-8 px-6'>
-                      <AccountActions
+              ) : showSharedLinksManager ? (
+                <div className='flex flex-col gap-y-8 px-6'>
+                  <SharedLinksSection />
+                </div>
+              ) : showSyncManager ? (
+                <div className='flex flex-col gap-y-8 px-6'>
+                  <SyncCategoriesSection />
+                  <SyncPassphraseSection />
+                </div>
+              ) : (
+                <>
+                  {!isSelfHosted() && appService.hasIAP && iapAvailable && (
+                    <div className='flex flex-col gap-y-8 px-2 sm:px-6'>
+                      <PlansComparison
+                        availablePlans={availablePlans}
                         userPlan={userProfilePlan}
-                        iapAvailable={iapAvailable}
-                        onLogout={handleLogout}
-                        onResetPassword={handleResetPassword}
-                        onUpdateEmail={handleUpdateEmail}
-                        onConfirmDelete={handleDeleteWithMessage}
-                        onConfirmDeleteAllBooks={handleDeleteAllBooksWithMessage}
-                        onRestorePurchase={handleIAPRestorePurchase}
-                        onManageSubscription={handleManageSubscription}
-                        onManageStorage={handleManageStorage}
-                        onManageSharedLinks={handleManageSharedLinks}
-                        onManageSync={handleManageSync}
+                        customizationPurchased={customizationPurchased}
+                        onSubscribe={handleIAPSubscribe}
                       />
                     </div>
-                  </>
-                )}
+                  )}
+                  <div className='flex flex-col gap-y-8 px-6'>
+                    <AccountActions
+                      iapAvailable={iapAvailable}
+                      onLogout={handleLogout}
+                      onResetPassword={handleResetPassword}
+                      onUpdateEmail={handleUpdateEmail}
+                      onConfirmDelete={handleDeleteWithMessage}
+                      onConfirmDeleteAllBooks={handleDeleteAllBooksWithMessage}
+                      onRestorePurchase={handleIAPRestorePurchase}
+                      onManageStorage={handleManageStorage}
+                      onManageSharedLinks={handleManageSharedLinks}
+                      onManageSync={handleManageSync}
+                    />
+                  </div>
+                </>
+              )}
 
-                <LegalLinks />
-              </div>
+              <LegalLinks />
             </div>
-          )}
+          </div>
         </div>
         <Toast />
       </div>

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { isSelfHosted } from '@/utils/access';
-import { UserPlan } from '@/types/quota';
 
 interface DeleteConfirmationModalProps {
   show: boolean;
@@ -50,7 +48,6 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 };
 
 interface AccountActionsProps {
-  userPlan: UserPlan;
   iapAvailable: boolean;
   onLogout: () => void;
   onResetPassword: () => void;
@@ -58,14 +55,12 @@ interface AccountActionsProps {
   onConfirmDelete: () => void;
   onConfirmDeleteAllBooks: () => void;
   onRestorePurchase?: () => void;
-  onManageSubscription?: () => void;
   onManageStorage?: () => void;
   onManageSharedLinks?: () => void;
   onManageSync?: () => void;
 }
 
 const AccountActions: React.FC<AccountActionsProps> = ({
-  userPlan,
   iapAvailable,
   onLogout,
   onResetPassword,
@@ -73,7 +68,6 @@ const AccountActions: React.FC<AccountActionsProps> = ({
   onConfirmDelete,
   onConfirmDeleteAllBooks,
   onRestorePurchase,
-  onManageSubscription,
   onManageStorage,
   onManageSharedLinks,
   onManageSync,
@@ -113,23 +107,13 @@ const AccountActions: React.FC<AccountActionsProps> = ({
         }}
       />
       <div className='flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-3'>
-        {appService?.hasIAP && iapAvailable ? (
+        {appService?.hasIAP && iapAvailable && (
           <button
             onClick={onRestorePurchase}
             className='bg-base-300 hover:bg-base-content/15 text-base-content border-base-content/10 eink-bordered w-full rounded-lg border px-6 py-3 font-medium transition-colors duration-150 md:w-auto'
           >
             {_('Restore Purchase')}
           </button>
-        ) : (
-          !isSelfHosted() &&
-          userPlan !== 'free' && (
-            <button
-              onClick={onManageSubscription}
-              className='bg-base-300 hover:bg-base-content/15 text-base-content border-base-content/10 eink-bordered w-full rounded-lg border px-6 py-3 font-medium transition-colors duration-150 md:w-auto'
-            >
-              {_('Manage Subscription')}
-            </button>
-          )
         )}
         {onManageSync && (
           <button

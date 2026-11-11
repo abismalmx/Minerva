@@ -10,10 +10,10 @@ type PurchaseRow = {
 const CUSTOMIZATION_FEATURE = 'customization';
 
 /**
- * Whether a completed payment is the Full Customization unlock. The two stores
- * identify it differently: IAP rows carry a readable product id and no
- * metadata, while Stripe rows carry an opaque `prod_xxx` and the product
- * metadata, so a product-id match alone would miss every Stripe purchase.
+ * Whether a completed payment is the Full Customization unlock. IAP rows carry
+ * a readable product id, while rows written by the (now removed) card store
+ * carry an opaque `prod_xxx` and the product metadata, so a product-id match
+ * alone would miss those.
  */
 const isCustomizationPurchase = (payment: PurchaseRow): boolean => {
   const metadata = payment.metadata ?? {};

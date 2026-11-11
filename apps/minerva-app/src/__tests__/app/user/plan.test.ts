@@ -3,18 +3,11 @@ import {
   getPlanDetails,
   getSubscriptionIntervals,
   getYearlySavingsPercent,
-  shouldUseBillingPortal,
 } from '@/app/user/utils/plan';
-import { AvailablePlan, UserPlan, PlanInterval, QuotaFeature } from '@/types/quota';
-import { StripeProductMetadata } from '@/types/payment';
+import { AvailablePlan, UserPlan, PlanInterval } from '@/types/quota';
 
-// getPlanDetails expects (AvailablePlan & StripeAvailablePlan)[].
-// StripeAvailablePlan = AvailablePlan & { metadata?: StripeProductMetadata; product?: Stripe.Product }
-// We build the exact shape needed to satisfy the type.
-
-type TestPlan = AvailablePlan & {
-  metadata?: StripeProductMetadata;
-};
+// getPlanDetails expects AvailablePlan[].
+type TestPlan = AvailablePlan;
 
 function makePlan(overrides: Partial<TestPlan> = {}): TestPlan {
   return {
@@ -197,7 +190,7 @@ describe('getPlanDetails', () => {
       expect(result.products![2]!.price).toBe(5000);
     });
 
-    it('should derive feature from productId when metadata.feature is missing', () => {
+    it('should derive feature from the productId', () => {
       const plans = [
         makePlan({
           plan: 'purchase',
@@ -231,14 +224,13 @@ describe('getPlanDetails', () => {
       expect(result.products![3]!.feature).toBe('tokens');
     });
 
-    it('should use metadata.feature when present', () => {
+    it('should use the productId when the store returns an opaque id', () => {
       const plans = [
         makePlan({
           plan: 'purchase',
-          productId: 'prod_xyz',
+          productId: 'prod_storage_100gb',
           price: 1000,
-          productName: 'XYZ',
-          metadata: { plan: 'purchase', feature: 'storage' as QuotaFeature },
+          productName: 'Storage',
         }),
       ];
       const result = getPlanDetails('purchase', plans);
@@ -388,28 +380,6 @@ describe('yearly billing', () => {
         makePlan({ plan: 'plus', price: 5988, interval: 'year' }),
       ];
       expect(getYearlySavingsPercent(noSaving)).toBeNull();
-    });
-  });
-
-  describe('shouldUseBillingPortal', () => {
-    it('sends an existing subscriber to the portal so Stripe swaps in place', () => {
-      expect(shouldUseBillingPortal('plus', 'subscription')).toBe(true);
-      expect(shouldUseBillingPortal('pro', 'subscription')).toBe(true);
-    });
-
-    it('sends a free user to checkout', () => {
-      expect(shouldUseBillingPortal('free', 'subscription')).toBe(false);
-    });
-
-    it('sends a lifetime/storage-only user to checkout', () => {
-      // `purchase` means storage add-ons with no active subscription, so there
-      // is nothing for the portal to switch.
-      expect(shouldUseBillingPortal('purchase', 'subscription')).toBe(false);
-    });
-
-    it('never routes a one-time purchase through the portal', () => {
-      expect(shouldUseBillingPortal('plus', 'purchase')).toBe(false);
-      expect(shouldUseBillingPortal('pro', 'purchase')).toBe(false);
     });
   });
 });

@@ -1,4 +1,3 @@
-import type { StripeAvailablePlan } from '@/libs/payment/stripe/client';
 import type { AvailablePlan, PlanInterval, PlanType, QuotaFeature, UserPlan } from '@/types/quota';
 import { stubTranslation as _ } from '@/utils/misc';
 
@@ -49,7 +48,7 @@ const SUBSCRIPTION_TIERS: UserPlan[] = ['plus', 'pro'];
 /**
  * Which billing intervals the store front may offer. Yearly only appears once
  * the store actually returns a yearly price for a subscription tier, so this
- * ships safely ahead of the Stripe prices / App Store / Play SKUs existing.
+ * ships safely ahead of the App Store / Play SKUs existing.
  */
 export const getSubscriptionIntervals = (availablePlans: AvailablePlan[]): PlanInterval[] => {
   const hasYearly = availablePlans.some(
@@ -77,15 +76,6 @@ export const getYearlySavingsPercent = (availablePlans: AvailablePlan[]): number
   }
   return best;
 };
-
-/**
- * A user who already holds a Stripe subscription must change it through the
- * billing portal: a second checkout session would leave both subscriptions
- * running and bill them twice. `purchase` means storage add-ons with no
- * subscription behind them, so those users still go to checkout.
- */
-export const shouldUseBillingPortal = (userPlan: UserPlan, planType: PlanType): boolean =>
-  planType === 'subscription' && (userPlan === 'plus' || userPlan === 'pro');
 
 /**
  * Per-tier accent. The store front is the one surface that is actively selling,
@@ -151,7 +141,7 @@ export const getPlanAccent = (plan: UserPlan): PlanAccent =>
 
 export function getPlanDetails(
   planCode: UserPlan,
-  availablePlans: (AvailablePlan & StripeAvailablePlan)[],
+  availablePlans: AvailablePlan[],
   interval: PlanInterval = 'month',
 ): PlanDetails {
   const availablePlan = availablePlans.find(
@@ -167,7 +157,7 @@ export function getPlanDetails(
           return {
             id: plan.productId,
             name: plan.productName,
-            feature: plan.metadata?.feature || getProductFeature(plan.productId) || 'generic',
+            feature: getProductFeature(plan.productId) || 'generic',
             price: plan.price,
             currency: plan.currency,
           } as ProductInfo;
