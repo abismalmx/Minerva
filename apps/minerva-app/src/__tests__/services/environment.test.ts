@@ -58,10 +58,10 @@ describe('environment', () => {
       expect(isWebAppPlatform()).toBe(false);
     });
 
-    test('returns false when NEXT_PUBLIC_APP_PLATFORM is not set', async () => {
+    test('returns true (non-Tauri) when NEXT_PUBLIC_APP_PLATFORM is not set', async () => {
       delete env['NEXT_PUBLIC_APP_PLATFORM'];
       const { isWebAppPlatform } = await import('@/services/environment');
-      expect(isWebAppPlatform()).toBe(false);
+      expect(isWebAppPlatform()).toBe(true);
     });
   });
 

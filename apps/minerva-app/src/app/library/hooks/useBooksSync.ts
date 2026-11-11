@@ -164,7 +164,7 @@ export const useBooksSync = () => {
         const settingsNow = useSettingsStore.getState().settings;
         if (!isMinervaCloudEnabled(settingsNow)) return;
         const newBooks = getNewBooks();
-        if (typeof newBooks.lastSyncedAt !== 'number') return;
+        if (!newBooks.lastSyncedAt) return;
         // getNewBooks just read the live library, so every change up to now
         // rides on this sync; only changes landing during it re-arm.
         syncPendingRef.current = false;
@@ -193,7 +193,7 @@ export const useBooksSync = () => {
   const pushLibrary = useCallback(async () => {
     if (!user) return;
     const newBooks = getNewBooks();
-    if (typeof newBooks.lastSyncedAt === 'number') {
+    if (newBooks.lastSyncedAt) {
       await syncBooks(newBooks?.books, 'push');
     }
   }, [user, syncBooks, getNewBooks]);

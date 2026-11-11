@@ -113,3 +113,18 @@ if (typeof globalThis.fetch === 'function') {
       ? Promise.resolve(Response.json({ error: 'NOT_CONFIGURED' }, { status: 503 }))
       : realFetch(input, init);
 }
+
+// `isTauriAppPlatform()` requires the Tauri runtime globals on top of
+// NEXT_PUBLIC_APP_PLATFORM=tauri. Unit tests only stub the env var, so expose
+// the marker the real webview injects; it is inert unless a test opts into the
+// tauri platform via the env var.
+if (typeof window !== 'undefined') {
+  const tauriWindow = window as unknown as { __TAURI_INTERNALS__?: unknown };
+  if (!tauriWindow.__TAURI_INTERNALS__) {
+    Object.defineProperty(window, '__TAURI_INTERNALS__', {
+      value: {},
+      configurable: true,
+      writable: true,
+    });
+  }
+}

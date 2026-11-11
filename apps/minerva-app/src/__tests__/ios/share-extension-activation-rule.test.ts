@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 /**
@@ -28,9 +28,13 @@ import { resolve } from 'path';
 // active config only.
 const stripYamlComments = (text: string): string => text.replace(/#.*$/gm, '');
 
-const projectYml = stripYamlComments(
-  readFileSync(resolve(process.cwd(), 'src-tauri/gen/apple/project.yml'), 'utf-8'),
-);
+// `gen/` is Tauri CLI output and is not tracked (its project.yml carries the
+// Apple team id), so a fresh checkout such as CI has nothing to read until
+// `tauri ios init` has run. The guard only applies where the file exists.
+const projectYmlPath = resolve(process.cwd(), 'src-tauri/gen/apple/project.yml');
+const hasProjectYml = existsSync(projectYmlPath);
+
+const projectYml = hasProjectYml ? stripYamlComments(readFileSync(projectYmlPath, 'utf-8')) : '';
 
 // The rule is an NSPredicate string; collapse whitespace so clause checks
 // don't depend on how the YAML folds it.
@@ -39,7 +43,7 @@ const activationRule = (() => {
   return match ? match[1]!.replace(/\s+/g, ' ').trim() : '';
 })();
 
-describe('iOS Share Extension activation rule (txt share stuck)', () => {
+describe.skipIf(!hasProjectYml)('iOS Share Extension activation rule (txt share stuck)', () => {
   it('does not enable NSExtensionActivationSupportsText (would capture .txt files)', () => {
     expect(projectYml).not.toContain('NSExtensionActivationSupportsText');
   });
