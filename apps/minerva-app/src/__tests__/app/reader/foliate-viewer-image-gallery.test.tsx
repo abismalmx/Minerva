@@ -1,5 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import FoliateViewer from '@/app/reader/components/FoliateViewer';
 import type ImageViewer from '@/app/reader/components/ImageViewer';
@@ -11,6 +11,9 @@ const { readerState, bookDataState, gallery } = vi.hoisted(() => {
     bookDataState: { bookData: null as unknown },
     gallery: {
       opened: false,
+      // Set once FoliateViewer has stored the opened view; pressing an image
+      // earlier finds no document images and yields an empty list.
+      inited: false,
       contents: [] as { doc: Document; index: number }[],
       jump: Promise.resolve() as Promise<void>,
       pressImage: null as ((src: string) => Promise<void>) | null,
@@ -21,7 +24,9 @@ const { readerState, bookDataState, gallery } = vi.hoisted(() => {
       getViewState: () => ({}),
       getViewSettings: () => ({ writingMode: 'auto' }),
       setView: () => {},
-      setViewInited: () => {},
+      setViewInited: () => {
+        gallery.inited = true;
+      },
     },
   };
 });
@@ -121,10 +126,18 @@ vi.mock('@/app/reader/components/ImageViewer', () => ({
 }));
 vi.mock('@/app/reader/components/TableViewer', () => ({ default: () => null }));
 
-// Each test appends its own section to the shared document; a leftover one
-// would add its images to the next test's list and shift the viewer's index.
-afterEach(() => {
+// `gallery` and the document are shared by every test. A leftover section adds
+// its images to the next test's list, and a leftover `pressImage`/`viewer`
+// belongs to the unmounted component of the previous test, so the waitFor on
+// `pressImage` passes at once and the press lands on a dead tree. Reset before
+// rendering, when no React tree is mounted.
+beforeEach(() => {
   document.body.innerHTML = '';
+  gallery.pressImage = null;
+  gallery.inited = false;
+  gallery.viewer = null;
+  gallery.contents = [];
+  gallery.jump = Promise.resolve();
 });
 
 // Paging the viewer to the next image jumps the book there, which can take a
@@ -186,6 +199,7 @@ it('ignores a jump that lands after the viewer moved to another image', async ()
     contentInsets: { top: 0, right: 0, bottom: 0, left: 0 },
   } as unknown as ComponentProps<typeof FoliateViewer>;
   render(<FoliateViewer {...props} />);
+  await waitFor(() => expect(gallery.inited).toBe(true));
   await waitFor(() => expect(gallery.pressImage).not.toBeNull());
   await act(async () => {});
 
