@@ -3,17 +3,25 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import FoliateViewer from '@/app/reader/components/FoliateViewer';
 
-const { readerState, openGate, bookDataState, viewSettingsState } = vi.hoisted(() => {
+const { readerState, openGate, bookDataState, viewSettingsState, viewState } = vi.hoisted(() => {
   return {
     bookDataState: { bookData: null as unknown },
     openGate: { pending: null as Promise<void> | null, started: false },
     viewSettingsState: { allowScript: false as boolean },
+    // The reader finishes opening the book asynchronously, and its tail
+    // (state updates React schedules) outlives a test that does not wait for
+    // it: the scheduled work then runs after the jsdom environment is torn
+    // down and dies on `window is not defined`. Waiting for the view to be
+    // inited is what tells the test the whole open has settled.
+    viewState: { inited: false },
     readerState: {
       setProgress: vi.fn(),
       getViewState: () => ({}),
       getViewSettings: () => ({ writingMode: 'auto', allowScript: viewSettingsState.allowScript }),
       setView: () => {},
-      setViewInited: () => {},
+      setViewInited: () => {
+        viewState.inited = true;
+      },
     },
   };
 });
@@ -134,6 +142,7 @@ it('removes its transformTarget listeners when the reader closes', async () => {
   openGate.pending = null;
   const { live, props } = setup();
   const { unmount } = render(<FoliateViewer {...props} />);
+  await waitFor(() => expect(viewState.inited).toBe(true));
   await waitFor(() => expect(live.size).toBeGreaterThan(0));
   unmount();
   expect(live.size).toBe(0);
@@ -150,7 +159,10 @@ it('leaves no transformTarget listeners when the reader closes while the book is
   await waitFor(() => expect(openGate.started).toBe(true));
   unmount();
   finishOpen();
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  // The reader's open continues after the unmount and still reaches the end
+  // of its own flow; letting it finish here keeps its scheduled work inside
+  // the test, where the environment is still alive.
+  await waitFor(() => expect(viewState.inited).toBe(true));
   expect(live.size).toBe(0);
 });
 
@@ -164,6 +176,7 @@ async function transform(type: string, name: string, data: unknown) {
     bookDoc: { sections: [{ id: 'OPS/chapter.xml' }, { id: 'OPS/cover.svg' }] },
   };
   render(<FoliateViewer {...props} />);
+  await waitFor(() => expect(viewState.inited).toBe(true));
   await waitFor(() => expect(live.size).toBeGreaterThan(0));
   const detail = { data, type, name };
   transformTarget.dispatchEvent(new CustomEvent('data', { detail }));
@@ -281,6 +294,7 @@ beforeEach(() => {
   URL.createObjectURL = () => `blob:test/${nextId++}`;
   URL.revokeObjectURL = () => {};
   viewSettingsState.allowScript = false;
+  viewState.inited = false;
 });
 
 afterEach(() => {
@@ -298,6 +312,7 @@ async function renderChapter() {
   bookDataState.bookData = { bookDoc: epub, isFixedLayout: false };
   const bookDoc = epub as unknown as ComponentProps<typeof FoliateViewer>['bookDoc'];
   render(<FoliateViewer {...props} bookDoc={bookDoc} />);
+  await waitFor(() => expect(viewState.inited).toBe(true));
   await waitFor(() => expect(live.size).toBeGreaterThan(0));
   const section = (epub.sections ?? [])[0]!;
   await section.load();
