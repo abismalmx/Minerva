@@ -205,8 +205,12 @@ describe('useWebBrowserDownloads', () => {
       expect.anything(),
     );
 
+    // The first download must have left the queue before the second arrives,
+    // and `confirm` must be the one bound to the second: a bare "not null"
+    // wait can still see the first download's render.
+    await waitFor(() => expect(downloads.current.pending).toBeNull());
     handler({ url: 'u2', path: '/cache/dune.fb2.zip', filename: 'dune.fb2.zip', success: true });
-    await waitFor(() => expect(downloads.current.pending).not.toBeNull());
+    await waitFor(() => expect(downloads.current.pending?.filename).toBe('dune.fb2.zip'));
     await downloads.current.confirm();
 
     await waitFor(() => expect(updateBooksMock).toHaveBeenCalledTimes(2));
