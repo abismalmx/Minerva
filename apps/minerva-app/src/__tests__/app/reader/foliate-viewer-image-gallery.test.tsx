@@ -162,6 +162,8 @@ it('does not paint the next image with the previous image style while the book j
 
   await act(() => gallery.pressImage!('blob:flourish'));
   expect(gallery.viewer?.renderStyle?.filter).toBe('invert(100%)');
+  // The image list the Next button depends on is built after the press.
+  await waitFor(() => expect(gallery.viewer?.onNext).toBeDefined());
 
   let land = () => {};
   gallery.jump = new Promise<void>((resolve) => {
@@ -204,6 +206,8 @@ it('ignores a jump that lands after the viewer moved to another image', async ()
   await act(async () => {});
 
   await act(() => gallery.pressImage!('blob:flourish'));
+  // The image list the Next button depends on is built after the press.
+  await waitFor(() => expect(gallery.viewer?.onNext).toBeDefined());
   let land = () => {};
   gallery.jump = new Promise<void>((resolve) => {
     land = resolve;
