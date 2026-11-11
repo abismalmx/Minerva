@@ -239,10 +239,24 @@ jobs:
         working-directory: apps/minerva-app
         run: pnpm test:pr:web:unit --shard=${{ matrix.shard }}/2
 
+      # Only .env.web.example is tracked; the browser config loads .env.web.
       - name: run web browser tests
+        id: web_browser
         if: matrix.shard == 1
         working-directory: apps/minerva-app
-        run: pnpm test:browser
+        run: |
+          cp -n .env.web.example .env.web
+          pnpm test:browser
+
+      # A failed screenshot comparison writes the actual image next to the
+      # reference; without the artifact there is no way to review or refresh it.
+      - name: upload browser test screenshots
+        if: ${{ failure() && steps.web_browser.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-test-screenshots
+          path: apps/minerva-app/src/__tests__/**/__screenshots__/
+          retention-days: 7
 
   # Browser-extension tests + build always run. The koplugin lint + Lua tests
   # (and the ~45s LuaJIT/busted install they need) only run when the koplugin
