@@ -39,6 +39,9 @@ vi.mock('@/services/environment', () => ({
   getMinervaVoiceAPIBaseUrl: () => 'https://web.minerva.invalid/api',
   getNodeAPIBaseUrl: () => 'https://web.minerva.invalid/api',
   getCustomBackendUrl: () => null,
+  CUSTOM_BACKEND_STORAGE_KEY: 'minerva_custom_backend_url',
+  setCustomBackendUrl: vi.fn(),
+  sanitizeBackendUrl: (url: string) => url,
   getInitializedAppService: vi.fn(),
   default: {},
 }));
