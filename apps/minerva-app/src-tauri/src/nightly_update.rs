@@ -161,7 +161,9 @@ mod tests {
     // mirror the real inputs: `pub_key` is base64 of the `.pub` file (== the
     // tauri.conf `updater.pubkey` format) and `signature` is the base64 `.sig`
     // contents (== the manifest `signature` field).
-    const TEST_DATA: &[u8] = b"minerva-nightly-verify-test\n";
+    // The signature below covers these exact bytes; changing them (e.g. a
+    // rename) invalidates it, so they are an opaque fixture, not branding.
+    const TEST_DATA: &[u8] = b"readest-nightly-verify-test\n";
     const TEST_PUBKEY_B64: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFQTAxMjIzNUEwRkE0OUIKUldTYnBBOWFJeEtnL2x4Q3dKR3dSWVJCY3dLNXdCR1l4d1YyVkhaZUppOVVNVm1kOGprbU85bTMK";
     const TEST_SIG_B64: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYnBBOWFJeEtnL3RvRC83dEJEUXZONVFZM1hranhKTUZxQzllR2lGWnNjckZMbCtOa3RXMi80aFdDYUNDUkdOa0NqUjJUQkZDL2dqaUVTeURlNzI0cW1BcUlZY2ZsOGcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDE0MzExCWZpbGU6bnYuYmluCkQzajlpbVZPOXVDYXdna2JBVWZ0TTE4K1d1cWdEYWVYQzVraGh4U1ZuOGNSTDZaOU5zV093OEVDajBvV0JydVV5VGY2K0tkb0hBbGJHYWprK0NsNUN3PT0K";
 

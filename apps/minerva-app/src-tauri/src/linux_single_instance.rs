@@ -49,7 +49,7 @@ mod tests {
             dbus_name_and_path("com.minerva.app"),
             (
                 "com.minerva.app.SingleInstance".to_string(),
-                "/com/bilingify/minerva/SingleInstance".to_string()
+                "/com/minerva/app/SingleInstance".to_string()
             )
         );
     }
