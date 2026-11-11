@@ -180,7 +180,7 @@ export const AboutWindow = () => {
             dir='ltr'
           >
             <p className='text-neutral-content text-sm'>
-              Minerva is a fork of Minerva, © Bilingify LLC.
+              Minerva is a fork of Readest, © Bilingify LLC and the Readest contributors.
             </p>
 
             <p className='text-neutral-content text-xs'>
@@ -195,9 +195,13 @@ export const AboutWindow = () => {
               AGPL v3 license. Please see the license for more details.
             </p>
             <p className='text-neutral-content text-xs'>
-              Source code is available at{' '}
+              The source code of this version is available at{' '}
+              <Link href='https://github.com/abismalmx/Minerva' className='text-blue-500 underline'>
+                github.com/abismalmx/Minerva
+              </Link>
+              . The original project is{' '}
               <Link href='https://github.com/readest/readest' className='text-blue-500 underline'>
-                the upstream project on GitHub
+                Readest
               </Link>
               .
             </p>
