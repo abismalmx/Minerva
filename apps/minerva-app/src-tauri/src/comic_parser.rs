@@ -45,7 +45,10 @@ fn page_sizes<R: Read + Seek>(zip: &mut ZipArchive<R>) -> HashMap<String, [usize
         if entry.is_dir() {
             continue;
         }
-        let name = entry.name().to_string();
+        // zip 9 reports an undecodable entry name as an error; leave it unmeasured.
+        let Ok(name) = entry.name().map(|n| n.into_owned()) else {
+            continue;
+        };
         if let Some(size) = read_image_size(entry) {
             sizes.insert(name, size);
         }
