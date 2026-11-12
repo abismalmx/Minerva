@@ -159,7 +159,6 @@
     "abortcontroller-polyfill": "^1.7.8",
     "ai": "^6.0.299",
     "ai-sdk-ollama": "^3.2.0",
-    "app-store-server-api": "^0.17.1",
     "aws4fetch": "^1.0.20",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",

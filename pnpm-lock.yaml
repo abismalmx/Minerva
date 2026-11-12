@@ -281,9 +281,6 @@ importers:
       ai-sdk-ollama:
         specifier: ^3.2.0
         version: 3.8.4(ai@6.0.299(zod@4.6.7))(zod@4.6.7)
-      app-store-server-api:
-        specifier: ^0.17.1
-        version: 0.17.3
       aws4fetch:
         specifier: ^1.0.20
         version: 1.0.20
@@ -4439,9 +4436,6 @@ packages:
   anynum@1.0.1:
     resolution: {integrity: sha512-N6//FLET/tXYNM/F6ABca1oH6fWB+KlTt909Le28WMDBk8oaT4vY17DCrwg2MvmuqUKt3Ni4N5dGJ/EoBgcO6A==}
 
-  app-store-server-api@0.17.3:
-    resolution: {integrity: sha512-A9KYXrFRbeR9fB55LJ2PJR/GHdQcWTo2chqjkV1A0kYSxIKgpnhb5Xf0KHiagXrqWUBjo6QIkt+bX3rrpjOcPQ==}
-
   archiver-utils@5.0.2:
     resolution: {integrity: sha512-wuLJMmIBQYCsGZgYLTy5FIB2pF6Lfb6cXMSF8Qywwk3t20zWnAi7zLcQFdKQmIB8wyZpY5ER38x08GbwtR2cLA==}
     engines: {node: '>= 14'}
@@ -6128,9 +6122,6 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
-
-  jose@5.10.0:
-    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   js-md5@0.8.3:
     resolution: {integrity: sha512-qR0HB5uP6wCuRMrWPTrkMaev7MJZwJuuw4fnwAzRgP4J4/F8RwtodOKpGp4XpqsLBFzzgqIO42efFAyz2Et6KQ==}
@@ -13010,10 +13001,6 @@ snapshots:
 
   anynum@1.0.1: {}
 
-  app-store-server-api@0.17.3:
-    dependencies:
-      jose: 5.10.0
-
   archiver-utils@5.0.2:
     dependencies:
       glob: 14.0.4
@@ -14830,8 +14817,6 @@ snapshots:
   jieba-wasm@2.4.0: {}
 
   jiti@2.7.0: {}
-
-  jose@5.10.0: {}
 
   js-md5@0.8.3: {}
 
